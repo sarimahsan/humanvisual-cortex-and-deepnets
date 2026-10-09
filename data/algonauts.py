@@ -102,7 +102,10 @@ class AlgonautsDataset:
                         simplified_name = base_roi
                         break
 
-                mask_data = np.load(rf).astype(bool)
+                try:
+                    mask_data = np.load(rf, allow_pickle=True).astype(bool)
+                except Exception:
+                    continue
                 target_dict = lh_masks if hemi.lower().startswith("lh") else rh_masks
                 if simplified_name in target_dict:
                     target_dict[simplified_name] = target_dict[simplified_name] | mask_data
@@ -115,7 +118,16 @@ class AlgonautsDataset:
             fname = os.path.basename(mf)
             hemi = "lh" if "lh." in fname or fname.startswith("lh_") else "rh"
             n_v = n_lh_vertices if hemi == "lh" else n_rh_vertices
-            map_arr = np.load(mf)
+            try:
+                map_arr = np.load(mf, allow_pickle=True)
+                if getattr(map_arr, "dtype", None) == object and hasattr(map_arr, "item"):
+                    try:
+                        map_arr = map_arr.item()
+                    except Exception:
+                        pass
+            except Exception:
+                continue
+
             # Check challenge integer mappings
             # PRF visual ROIs: 1: V1v, 2: V1d, 3: V2v, 4: V2d, 5: V3v, 6: V3d, 7: hV4
             if "prf-visualrois" in fname:
