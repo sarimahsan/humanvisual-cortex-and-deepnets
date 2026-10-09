@@ -173,6 +173,9 @@ class EncodingPipeline:
             print(f"==========================================")
 
             if m_key == "gabor_pyramid":
+                if not self.cache.exists(m_key, "multiscale_energy", self.subject_id):
+                    print(f"Features for {m_key} missing from cache. Run extractor first! Skipping.")
+                    continue
                 X_feat, _ = self.cache.load(m_key, "multiscale_energy", self.subject_id)
                 res = self.run_layer_encoding(
                     m_key, "multiscale_energy", X_feat, Y_all, split_mgr, roi_mgr, run_shuffled_null=True
