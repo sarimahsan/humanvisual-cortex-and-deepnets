@@ -1,0 +1,12 @@
+{
+  "model_key": "gabor_pyramid",
+  "layer_name": "multiscale_energy",
+  "subject_id": "subj01",
+  "shape": [
+    150,
+    560
+  ],
+  "dtype": "float16",
+  "normalized_depth": 0.05,
+  "desc": "Gabor multiscale energy + color"
+}

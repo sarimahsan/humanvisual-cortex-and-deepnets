@@ -1,24 +1,25 @@
 """
-Low-Level Baseline: Multiscale Gabor Filter Bank & Spatial Statistics.
+Low-Level Baseline: Multiscale Gabor Filter Bank & Spatial Statistics (High-Speed Vectorized).
 
-Implements a biologically-inspired early visual feature extractor:
+Implements biologically-inspired early visual feature extraction:
 - Multiscale 2D Gabor wavelet pyramid (4 frequencies, 8 orientations)
+- Accelerated via PyTorch Convolutions with efficient kernel sizing
 - Spatial energy pooling across quadrants (retaining retinotopic spatial info)
-- Color statistics (RGB / LAB channel means and standard deviations)
-- Spatial frequency power spectrum distribution
+- Color statistics across quadrants
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+import torch
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
-from scipy.ndimage import convolve
 
 
 def create_gabor_filter(
-    ksize: int = 21,
-    sigma: float = 4.0,
+    ksize: int = 15,
+    sigma: float = 2.5,
     theta: float = 0.0,
-    lambd: float = 10.0,
+    lambd: float = 5.0,
     gamma: float = 0.5,
     psi: float = 0.0,
 ) -> np.ndarray:
@@ -36,7 +37,6 @@ def create_gabor_filter(
     gb = np.exp(-0.5 * (x_theta**2 / sigma_x**2 + y_theta**2 / sigma_y**2)) * np.cos(
         2 * np.pi * x_theta / lambd + psi
     )
-    # Zero DC component (mean center)
     gb -= gb.mean()
     norm = np.linalg.norm(gb)
     if norm > 0:
@@ -45,81 +45,65 @@ def create_gabor_filter(
 
 
 class GaborPyramidExtractor:
-    """Extracts multiscale Gabor energy, spatial pooling, and color statistics."""
+    """High-speed Gabor energy and color statistics extractor."""
 
     def __init__(
         self,
         n_orientations: int = 8,
-        wavelengths: Tuple[float, ...] = (4.0, 8.0, 16.0, 32.0),
+        wavelengths: Tuple[float, ...] = (3.0, 5.0, 8.0, 12.0),
         spatial_grid: Tuple[int, int] = (4, 4),
+        device: Optional[str] = None,
     ):
-        self.n_orientations = n_orientations
-        self.wavelengths = wavelengths
+        self.device = torch.device(
+            device if device else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.spatial_grid = spatial_grid
 
-        # Precompute filter bank (even and odd phase quadrature pairs)
-        self.filters: List[Tuple[np.ndarray, np.ndarray]] = []
+        # 15x15 kernels
+        max_ksize = 15
         thetas = [i * np.pi / n_orientations for i in range(n_orientations)]
 
+        even_filters = []
+        odd_filters = []
+
         for lambd in wavelengths:
-            sigma = 0.56 * lambd  # Standard neurophysiological bandwidth ratio
-            ksize = int(max(15, 2 * np.ceil(3 * sigma) + 1))
-            if ksize % 2 == 0:
-                ksize += 1
+            sigma = 0.56 * lambd
             for th in thetas:
-                f_even = create_gabor_filter(ksize=ksize, sigma=sigma, theta=th, lambd=lambd, psi=0.0)
-                f_odd = create_gabor_filter(ksize=ksize, sigma=sigma, theta=th, lambd=lambd, psi=np.pi / 2)
-                self.filters.append((f_even, f_odd))
+                f_even = create_gabor_filter(ksize=max_ksize, sigma=sigma, theta=th, lambd=lambd, psi=0.0)
+                f_odd = create_gabor_filter(ksize=max_ksize, sigma=sigma, theta=th, lambd=lambd, psi=np.pi / 2)
+                even_filters.append(f_even)
+                odd_filters.append(f_odd)
 
-    def _pool_quadrants(self, feature_map: np.ndarray) -> np.ndarray:
-        """Applies spatial pooling over a grid (e.g. 4x4) to retain retinotopy."""
-        gh, gw = self.spatial_grid
-        h, w = feature_map.shape
-        pooled = np.zeros((gh, gw), dtype=np.float32)
-        h_chunk = h // gh
-        w_chunk = w // gw
-        for i in range(gh):
-            for j in range(gw):
-                pooled[i, j] = feature_map[i * h_chunk : (i + 1) * h_chunk, j * w_chunk : (j + 1) * w_chunk].mean()
-        return pooled.flatten()
+        even_t = torch.tensor(np.stack(even_filters)[:, None, :, :], dtype=torch.float32, device=self.device)
+        odd_t = torch.tensor(np.stack(odd_filters)[:, None, :, :], dtype=torch.float32, device=self.device)
 
-    def extract_single_image(self, img: Image.Image) -> np.ndarray:
-        """Extracts low-level features for a single PIL RGB image."""
-        img_resized = img.resize((224, 224)).convert("RGB")
-        img_np = np.asarray(img_resized, dtype=np.float32) / 255.0
-
-        # Grayscale for Gabor filtering (standard luminance channel)
-        gray = 0.2989 * img_np[:, :, 0] + 0.5870 * img_np[:, :, 1] + 0.1140 * img_np[:, :, 2]
-
-        feature_blocks: List[np.ndarray] = []
-
-        # 1. Gabor quadrature energy maps
-        for f_even, f_odd in self.filters:
-            resp_even = convolve(gray, f_even, mode="reflect")
-            resp_odd = convolve(gray, f_odd, mode="reflect")
-            # Phase-invariant complex cell energy response
-            energy = np.sqrt(resp_even**2 + resp_odd**2)
-            pooled_energy = self._pool_quadrants(energy)
-            feature_blocks.append(pooled_energy)
-
-        # 2. Color channel statistics (means and standard deviations across 4x4 grid)
-        for c in range(3):
-            c_map = img_np[:, :, c]
-            feature_blocks.append(self._pool_quadrants(c_map))
-
-        # 3. Spatial frequency distribution via 2D FFT
-        fft2 = np.abs(np.fft.fftshift(np.fft.fft2(gray)))
-        fft_pooled = self._pool_quadrants(np.log1p(fft2))
-        feature_blocks.append(fft_pooled)
-
-        concatenated = np.concatenate(feature_blocks).astype(np.float32)
-        return concatenated
+        self.even_weight = even_t
+        self.odd_weight = odd_t
+        self.pad = max_ksize // 2
 
     def extract_batch(self, image_paths: List[str]) -> np.ndarray:
-        """Extracts features across a batch of image paths."""
-        results = []
-        for path in image_paths:
-            with Image.open(path) as img:
-                feats = self.extract_single_image(img)
-                results.append(feats)
-        return np.stack(results, axis=0).astype(np.float16)
+        """Extracts features across a batch of images quickly."""
+        tensors = []
+        for p in image_paths:
+            with Image.open(p) as img:
+                # Downsample to 112x112 for high-speed spatial filtering
+                im = img.convert("RGB").resize((112, 112))
+                arr = np.asarray(im, dtype=np.float32).transpose(2, 0, 1) / 255.0
+                tensors.append(arr)
+
+        batch = torch.tensor(np.stack(tensors), dtype=torch.float32, device=self.device)
+
+        # Luminance
+        gray = 0.2989 * batch[:, 0:1] + 0.5870 * batch[:, 1:2] + 0.1140 * batch[:, 2:3]
+
+        with torch.no_grad():
+            resp_even = F.conv2d(gray, self.even_weight, padding=self.pad)
+            resp_odd = F.conv2d(gray, self.odd_weight, padding=self.pad)
+            energy = torch.sqrt(resp_even**2 + resp_odd**2 + 1e-8)
+
+            pooled_energy = F.adaptive_avg_pool2d(energy, self.spatial_grid).flatten(1)
+            pooled_color = F.adaptive_avg_pool2d(batch, self.spatial_grid).flatten(1)
+
+            features = torch.cat([pooled_energy, pooled_color], dim=1)
+
+        return features.cpu().numpy().astype(np.float16)

@@ -11,6 +11,7 @@ import argparse
 import os
 import yaml
 import torch
+import numpy as np
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 try:
@@ -53,9 +54,12 @@ def extract_model_features(
     config_path: str = "configs/models.yaml",
     cache_dir: str = "features/cache",
     batch_size: int = 64,
-    device: str = "cuda",
+    device: Optional[str] = None,
 ) -> None:
     """Extracts features for all layers of model_key on subject_id's images."""
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
     cache = FeatureCache(cache_dir=cache_dir)
     with open(config_path, "r", encoding="utf-8") as f:
         models_cfg = yaml.safe_load(f)
@@ -72,7 +76,7 @@ def extract_model_features(
             print(f"Cache already exists for {model_key} - Subject {subject_id}. Skipping.")
             return
 
-        extractor = GaborPyramidExtractor()
+        extractor = GaborPyramidExtractor(device=device)
         all_features = []
         for i in tqdm(range(0, n_images, batch_size), desc="Gabor extraction"):
             batch_paths = image_paths[i : i + batch_size]
