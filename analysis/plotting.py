@@ -45,6 +45,16 @@ def plot_layer_roi_heatmap(
 
     layer_labels = [f"d={e.get('normalized_depth', 0.0):.2f}\n{e.get('layer_name', '')}" for e in entries]
     rois = [r for r in ROI_HIERARCHY_RANK.keys() if any(r in e.get("roi_medians", {}) for e in entries)]
+    if not rois:
+        # Fallback to any present ROI keys
+        all_keys = set()
+        for e in entries:
+            all_keys.update(e.get("roi_medians", {}).keys())
+        rois = sorted(list(all_keys))
+
+    if not rois:
+        print(f"Notice: No ROI-specific metrics found for {model_key}. Skipping heatmap.")
+        return
 
     matrix = np.zeros((len(rois), len(entries)))
     for j, e in enumerate(entries):
@@ -52,7 +62,8 @@ def plot_layer_roi_heatmap(
             matrix[i, j] = e.get("roi_medians", {}).get(r, 0.0)
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    im = ax.imshow(matrix, cmap="viridis", aspect="auto", vmin=0.0, vmax=max(0.6, matrix.max()))
+    vmax = max(0.6, float(matrix.max())) if matrix.size > 0 else 0.6
+    im = ax.imshow(matrix, cmap="viridis", aspect="auto", vmin=0.0, vmax=vmax)
 
     ax.set_xticks(np.arange(len(layer_labels)))
     ax.set_yticks(np.arange(len(rois)))

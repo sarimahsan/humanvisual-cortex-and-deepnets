@@ -235,6 +235,35 @@ class EncodingPipeline:
         print(f"Vertex correlations saved to: {npz_file}")
         return summary_out
 
+    def recalculate_roi_summary_from_npz(
+        self, npz_path: str, summary_file: str
+    ) -> Dict[str, Any]:
+        """
+        Fast re-computation of ROI metrics from already-fitted vertex correlations
+        without needing to re-fit ridge regressions.
+        """
+        dataset = AlgonautsDataset(self.data_root, self.subject_id)
+        _, (n_lh, n_rh) = dataset.load_fmri_responses()
+        roi_mgr = dataset.load_roi_manager(n_lh, n_rh)
+
+        with open(summary_file, "r", encoding="utf-8") as f:
+            summary_out = json.load(f)
+
+        v_data = np.load(npz_path)
+        for k in v_data.files:
+            if k in summary_out:
+                vertex_r = v_data[k]
+                roi_medians = {}
+                for r in roi_mgr.roi_dict.keys():
+                    roi_medians[r] = roi_mgr.summarize_roi_metric(vertex_r, r, method="median")
+                summary_out[k]["roi_medians"] = roi_medians
+
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(summary_out, f, indent=2)
+
+        print(f"Updated {summary_file} with {len(roi_mgr.roi_dict)} ROIs for {len(v_data.files)} layers in seconds!")
+        return summary_out
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Ridge Encoding Pipeline")

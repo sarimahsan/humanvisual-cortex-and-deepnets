@@ -37,6 +37,7 @@ def run_end_to_end(
     models: list = None,
     device: str = None,
     skip_extraction: bool = False,
+    skip_fitting: bool = False,
 ):
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -73,7 +74,15 @@ def run_end_to_end(
     # -------------------------------------------------------------
     print("\n[Step 2/4] Fitting SVD Ridge Regression Encoding Models...")
     pipeline = EncodingPipeline(subject_id=subject_id, data_root=data_root)
-    results_summary = pipeline.run_full_subject(selected_models=models)
+
+    npz_path = os.path.join("results", f"vertex_correlations_{subject_id}.npz")
+    summary_path = os.path.join("results", f"summary_{subject_id}.json")
+
+    if skip_fitting and os.path.exists(npz_path) and os.path.exists(summary_path):
+        print(f"Loading existing vertex correlations from {npz_path} (skipping re-fitting)...")
+        results_summary = pipeline.recalculate_roi_summary_from_npz(npz_path, summary_path)
+    else:
+        results_summary = pipeline.run_full_subject(selected_models=models)
 
     # -------------------------------------------------------------
     # Step 3: Hierarchy Analysis (Spearman rho)
@@ -93,6 +102,8 @@ def run_end_to_end(
             pval = h_eval["p_value"]
             ci = h_eval["ci_95"]
             print(f"{m:<25} | {rho:+.3f}        | {pval:<10.4f} | [{ci[0]:.2f}, {ci[1]:.2f}]")
+        else:
+            print(f"{m:<25} | {'< 3 ROIs':<12} | {'N/A':<10} | N/A")
     print("-------------------------------------------------------------")
 
     # -------------------------------------------------------------
@@ -117,12 +128,16 @@ def run_end_to_end(
         plot_model_comparison_per_roi(
             best_scores, output_path="figures/fig2_model_comparison.png"
         )
+    else:
+        print("Notice: Insufficient ROI peak scores for Figure 2. Skipping.")
 
     # Figure 3: Hierarchy Regression
     if hierarchy_results:
         plot_hierarchy_regression(
             hierarchy_results, output_path="figures/fig3_hierarchy_alignment.png"
         )
+    else:
+        print("Notice: Insufficient hierarchy results for Figure 3. Skipping.")
 
     print("\n" + "=" * 70)
     print("✅ END-TO-END PIPELINE COMPLETE!")
@@ -142,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default=None, help="cuda or cpu (auto-detected if omitted)")
     parser.add_argument("--models", nargs="*", default=None, help="List of models to run")
     parser.add_argument("--skip_extraction", action="store_true", help="Skip feature extraction")
+    parser.add_argument("--skip_fitting", action="store_true", help="Skip fitting if results already exist")
     args = parser.parse_args()
 
     run_end_to_end(
@@ -150,4 +166,5 @@ if __name__ == "__main__":
         models=args.models,
         device=args.device,
         skip_extraction=args.skip_extraction,
+        skip_fitting=args.skip_fitting,
     )
