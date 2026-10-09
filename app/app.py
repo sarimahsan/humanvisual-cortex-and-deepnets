@@ -254,7 +254,7 @@ HTML_PAGE = """<!doctype html>
       </div>
       <div style="overflow-x:auto;">
         <div style="min-width:560px; display:flex; flex-direction:column; gap:4px;">
-          <div id="heatmapHeaderRow" style="display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;"></div>
+          <div id="heatmapHeaderRow" style="display:grid; grid-template-columns:84px repeat(8,minmax(0,1fr)); gap:4px;"></div>
           <div id="heatmapBody" style="display:flex; flex-direction:column; gap:4px;"></div>
         </div>
       </div>
@@ -369,7 +369,7 @@ const state = {
   subj: 0      // subject index
 };
 
-const AREAS = ['V1', 'V2', 'V3', 'hV4', 'EBA', 'FFA', 'PPA'];
+const AREAS = ['Overall', 'V1', 'V2', 'V3', 'hV4', 'EBA', 'FFA', 'PPA'];
 const SUBJ = [
   { id: 'subj01', label: 'S1' },
   { id: 'subj02', label: 'S2' },
@@ -488,7 +488,9 @@ function render() {
   const bestLayerPerArea = AREAS.map((aName) => {
     let bestL = -1, bestV = -1;
     entries.forEach((e, lIdx) => {
-      const v = (e.roi_medians && typeof e.roi_medians[aName] === 'number') ? e.roi_medians[aName] : null;
+      const v = (aName === 'Overall')
+        ? (e.overall_median_r ?? null)
+        : ((e.roi_medians && typeof e.roi_medians[aName] === 'number') ? e.roi_medians[aName] : null);
       if (v !== null && v > bestV) {
         bestV = v;
         bestL = lIdx;
@@ -508,7 +510,7 @@ function render() {
   } else {
     entries.forEach((entry, lIdx) => {
       const rowDiv = document.createElement('div');
-      rowDiv.style = 'display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;';
+      rowDiv.style = 'display:grid; grid-template-columns:84px repeat(8,minmax(0,1fr)); gap:4px;';
 
       const labelDiv = document.createElement('div');
       labelDiv.style = "align-self:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
@@ -517,7 +519,9 @@ function render() {
       rowDiv.appendChild(labelDiv);
 
       AREAS.forEach((aName, aIdx) => {
-        const roiScore = (entry.roi_medians && typeof entry.roi_medians[aName] === 'number') ? entry.roi_medians[aName] : null;
+        const roiScore = (aName === 'Overall')
+          ? (entry.overall_median_r ?? null)
+          : ((entry.roi_medians && typeof entry.roi_medians[aName] === 'number') ? entry.roi_medians[aName] : null);
         const cell = document.createElement('button');
         cell.type = 'button';
 
