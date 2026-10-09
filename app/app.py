@@ -1,17 +1,13 @@
 """
 Interactive Brain Encoding Explorer.
 
-Faithfully implements the design reference mockup from demo/Main.dc.html:
-- Clean IBM Plex Sans and IBM Plex Mono typography.
-- Light, publication-grade styling (#F3F5F7 background, #FFFFFF cards, #D9E0E6 borders).
-- Interactive Layer x Region similarity matrix with noise-ceiling normalization.
-- Layer-wise score bar chart with untrained baseline tick and noise ceiling line.
-- 3-stage Visual Hierarchy flow map (Early -> Intermediate -> Category-selective) with Spearman rho readout.
-- Category Selectivity check (measured fMRI vs deep net predicted responses).
-- Standalone zero-dependency Python server (no Gradio/Pandas, avoiding Windows AppLocker/WDAC blocks).
+Displays ONLY REAL computed encoding results from results/summary_{subject}.json.
+Zero mock data:
+- If a subject, model, layer, or ROI metric exists, its exact value is displayed.
+- If data is absent or not yet computed, it displays null / "—" with neutral styling.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import http.server
 import socketserver
 import json
@@ -26,19 +22,21 @@ if PROJECT_ROOT not in sys.path:
 
 PORT = 7860
 
-def load_data(subject_id: str, model_key: str):
-    """Loads results summary for the given subject and model if available."""
-    summary_path = os.path.join(PROJECT_ROOT, "results", f"summary_{subject_id}.json")
-    if os.path.exists(summary_path):
-        try:
-            with open(summary_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            filtered = [v for v in data.values() if v.get("model_key") == model_key]
-            if filtered:
-                return filtered
-        except Exception:
-            pass
-    return None
+def load_all_summaries() -> Dict[str, Any]:
+    """Loads all existing results/summary_{subject}.json files on disk."""
+    summaries = {}
+    results_dir = os.path.join(PROJECT_ROOT, "results")
+    if os.path.exists(results_dir):
+        for f in os.listdir(results_dir):
+            if f.startswith("summary_") and f.endswith(".json"):
+                s_id = f.replace("summary_", "").replace(".json", "")
+                try:
+                    with open(os.path.join(results_dir, f), "r", encoding="utf-8") as fp:
+                        summaries[s_id] = json.load(fp)
+                except Exception:
+                    pass
+    return summaries
+
 
 HTML_PAGE = """<!doctype html>
 <html lang="en">
@@ -168,13 +166,18 @@ HTML_PAGE = """<!doctype html>
   }
   .heatmap-cell {
     height: 46px;
-    border: 0;
     border-radius: 6px;
     cursor: pointer;
     font: 500 12px/1 'IBM Plex Mono', monospace;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid transparent;
+  }
+  .heatmap-cell.null-val {
+    background: #F8FAFC;
+    color: #94A3B8;
+    border: 1px solid #E2E8F0;
   }
   .heatmap-cell.best {
     box-shadow: inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;
@@ -197,12 +200,12 @@ HTML_PAGE = """<!doctype html>
     background: #EBF5FA;
     font: 500 12px/1.3 'IBM Plex Mono', monospace;
   }
-  .badge-mock {
+  .badge-empty {
     padding: 8px 14px;
     border-radius: 999px;
-    border: 1px solid #C2570C;
-    color: #8A3A00;
-    background: #FFF4EA;
+    border: 1px solid #8A99A6;
+    color: #51606C;
+    background: #F3F5F7;
     font: 500 12px/1.3 'IBM Plex Mono', monospace;
   }
 </style>
@@ -214,16 +217,16 @@ HTML_PAGE = """<!doctype html>
   <header>
     <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 420px; min-width:0;">
       <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; color:#0B6E99;">
-        Natural Scenes Dataset · 7T fMRI · human visual cortex
+        Natural Scenes Dataset · 7T fMRI · Human Visual Cortex
       </div>
       <h1 style="margin:0; font:600 34px/1.15 'IBM Plex Sans',sans-serif; letter-spacing:-0.01em;">
         Which network layers predict which human brain regions?
       </h1>
       <p style="margin:0; font:400 15px/1.5 'IBM Plex Sans',sans-serif; color:#51606C; max-width:660px;">
-        Pick a pretrained model and a subject, read the layer-by-region map from V1 up to the face, body and place areas, then check it against the untrained baseline and the noise ceiling.
+        Real cross-validated encoding accuracy (Pearson r) evaluated across human visual cortex. Only real computed metrics are shown below.
       </p>
     </div>
-    <div id="dataBadge" class="badge-mock">Mock data · layout preview</div>
+    <div id="dataBadge" class="badge-empty">Loading results...</div>
   </header>
 
   <!-- Controls: Models, Subjects, Baseline Toggle -->
@@ -246,7 +249,7 @@ HTML_PAGE = """<!doctype html>
       <div>
         <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer × region similarity</h2>
         <p id="heatmapSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Cross-validated encoding score, noise-ceiling normalized. Showing ResNet-50, subject S1. Tap a cell or a region to inspect it.
+          Cross-validated encoding score (r). Cells show ROI-specific score when computed, or "—" if ROI mask is unassigned.
         </p>
       </div>
       <div style="overflow-x:auto;">
@@ -257,13 +260,17 @@ HTML_PAGE = """<!doctype html>
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
         <div style="display:flex; align-items:center; gap:8px;">
-          <span>0</span>
+          <span>0.0</span>
           <div style="width:120px; height:10px; border-radius:5px; background:linear-gradient(90deg, #ECF3F7, #073B52);"></div>
-          <span>1 = noise ceiling</span>
+          <span>0.5+</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:18px; height:18px; border-radius:4px; background:#ECF3F7; box-shadow:inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;"></div>
-          <span>best layer for that region</span>
+          <span>best layer for ROI</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:18px; height:18px; border-radius:4px; background:#F8FAFC; border:1px solid #E2E8F0;"></div>
+          <span>— = not yet computed</span>
         </div>
       </div>
     </section>
@@ -271,9 +278,9 @@ HTML_PAGE = """<!doctype html>
     <!-- Layer-wise score bar chart -->
     <section class="card" style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:14px;">
       <div>
-        <h2 id="barsTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer-wise score · FFA</h2>
+        <h2 id="barsTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer-wise score</h2>
         <p id="barsSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          ResNet-50 predicting FFA from each layer.
+          Real encoding accuracy across layers.
         </p>
       </div>
       <div id="barsChartArea" style="position:relative; height:220px; border-bottom:1.5px solid #12202B; display:flex; gap:6px;">
@@ -287,9 +294,6 @@ HTML_PAGE = """<!doctype html>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:16px; height:3px; background:#C2570C;"></div><span>untrained baseline</span>
         </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:16px; border-top:2px dashed #51606C;"></div><span>noise ceiling</span>
-        </div>
       </div>
       <p id="calloutText" style="margin:0; padding-top:12px; border-top:1px solid #D9E0E6; font:400 14px/1.5 'IBM Plex Sans',sans-serif;"></p>
     </section>
@@ -302,7 +306,7 @@ HTML_PAGE = """<!doctype html>
       <div>
         <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Visual hierarchy map</h2>
         <p id="hierSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Each region is shaded by the depth of its best-matching layer in ResNet-50.
+          Shaded by peak layer depth when ROI masks are populated.
         </p>
       </div>
       <div id="hierarchyGrid" style="display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr) 28px minmax(0,1fr); grid-template-rows:repeat(3,auto); gap:8px 6px; align-items:stretch;">
@@ -316,15 +320,10 @@ HTML_PAGE = """<!doctype html>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"></path></svg>
         </div>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
-        <span>early layer</span>
-        <div style="flex:1 1 0; max-width:160px; height:10px; border-radius:5px; background:linear-gradient(90deg,#CFE0E8,#073B52);"></div>
-        <span>late layer</span>
-      </div>
       <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; border-top:1px solid #D9E0E6; padding-top:14px;">
-        <span id="rhoValue" style="font:500 30px/1 'IBM Plex Mono',monospace">0.93</span>
-        <span style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#51606C; flex:1 1 200px; min-width:0;">
-          Spearman ρ between region order (V1 to PPA) and best-layer depth. Higher means a cleaner hierarchy.
+        <span id="rhoValue" style="font:500 30px/1 'IBM Plex Mono',monospace">—</span>
+        <span id="rhoDesc" style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#51606C; flex:1 1 200px; min-width:0;">
+          Spearman ρ: awaiting ROI masks from challenge data.
         </span>
       </div>
     </section>
@@ -332,9 +331,9 @@ HTML_PAGE = """<!doctype html>
     <!-- Selectivity check -->
     <section class="card" style="flex:1.2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px;">
       <div>
-        <h2 id="selectivityTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Selectivity check · FFA</h2>
+        <h2 id="selectivityTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Selectivity check</h2>
         <p id="selectivitySubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Mean FFA response by image category, measured vs predicted from ResNet-50 layer L6. Does the model reproduce what the region prefers?
+          Measured vs predicted domain responses. Displays "—" until image category labels are extracted.
         </p>
       </div>
       <div id="catsChartArea" style="display:flex; gap:10px; height:160px; align-items:stretch; border-bottom:1.5px solid #12202B; padding:0 4px;"></div>
@@ -346,77 +345,48 @@ HTML_PAGE = """<!doctype html>
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="width:14px; height:14px; border-radius:3px; background:#4C8FAB;"></div><span>predicted</span>
         </div>
-        <span id="corrValue" style="margin-left:auto; color:#12202B; font-weight:500;">r = 0.94</span>
+        <span id="corrValue" style="margin-left:auto; color:#12202B; font-weight:500;">r = —</span>
       </div>
     </section>
   </div>
 
   <!-- Footer -->
   <footer style="display:flex; flex-wrap:wrap; gap:8px 24px; font:400 12px/1.5 'IBM Plex Mono',monospace; color:#51606C;">
-    <span>Subjects: S1–S4 · Images per subject: 9,841 · Regions: provided ROI masks</span>
-    <span>Natural Scenes Dataset (NSD 7T fMRI) · Algonauts 2023 Challenge</span>
+    <span>Subjects: S1–S4 · Algonauts 2023 Challenge / NSD 7T fMRI</span>
+    <span>Real execution output: results/summary_{subject}.json</span>
   </footer>
 
 </div>
 
 <script>
-// State Management
+/* __REAL_DATA_PLACEHOLDER__ */
+
 const state = {
   mi: 0,       // model index
-  ai: 5,       // area index (default FFA)
-  li: null,    // layer index (null = best layer for area)
+  ai: 0,       // area index
+  li: null,    // layer index
   base: true,  // show untrained baseline tick
-  subj: 0      // subject index (S1)
+  subj: 0      // subject index
 };
 
 const AREAS = ['V1', 'V2', 'V3', 'hV4', 'EBA', 'FFA', 'PPA'];
-const PEAKS = [1.0, 1.6, 2.3, 3.4, 4.6, 5.9, 5.1];
-const SUBJ = ['S1', 'S2', 'S3', 'S4'];
-const CATS = ['Faces', 'Bodies', 'Places', 'Food', 'Animals', 'Objects'];
-const SEL = [
-  [0.45, 0.50, 0.55, 0.50, 0.50, 0.50],
-  [0.45, 0.50, 0.55, 0.50, 0.50, 0.50],
-  [0.45, 0.50, 0.60, 0.50, 0.50, 0.50],
-  [0.50, 0.50, 0.55, 0.68, 0.50, 0.50],
-  [0.55, 0.90, 0.40, 0.30, 0.50, 0.45],
-  [0.95, 0.40, 0.30, 0.30, 0.50, 0.35],
-  [0.25, 0.30, 0.95, 0.35, 0.30, 0.35]
-];
-const NL = 8;
-const MODELS = [
-  { id: 'resnet50', label: 'ResNet-50', sub: 'supervised', amp: 0.74, sig: 1.7 },
-  { id: 'alexnet', label: 'AlexNet', sub: 'shallow anchor', amp: 0.68, sig: 1.8 },
-  { id: 'resnet50_untrained', label: 'Untrained', sub: 'random init', amp: 0.38, sig: 3.2 },
-  { id: 'gabor_pyramid', label: 'Gabor', sub: 'filterbank control', amp: 0.42, sig: 2.5 }
+const SUBJ = [
+  { id: 'subj01', label: 'S1' },
+  { id: 'subj02', label: 'S2' },
+  { id: 'subj03', label: 'S3' },
+  { id: 'subj04', label: 'S4' }
 ];
 
-// Seeded pseudorandom generator for deterministic, noise-realistic values
-const rnd = (a, b, c) => {
-  const x = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453;
-  return x - Math.floor(x);
-};
+const MODELS = [
+  { id: 'resnet50', label: 'ResNet-50', sub: 'supervised' },
+  { id: 'alexnet', label: 'AlexNet', sub: 'shallow anchor' },
+  { id: 'resnet50_untrained', label: 'Untrained', sub: 'random init' },
+  { id: 'gabor_pyramid', label: 'Gabor', sub: 'filterbank control' }
+];
+
+const CATS = ['Faces', 'Bodies', 'Places', 'Food', 'Animals', 'Objects'];
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-function score(m, a, l) {
-  const M = MODELS[m];
-  const sj = state.subj;
-  const isUntrained = M.id === 'resnet50_untrained';
-  const isGabor = M.id === 'gabor_pyramid';
-  
-  if (isGabor) {
-    // Gabor peaks very early (L1-L2) and falls steeply
-    const v = (1 - a * 0.12) * Math.exp(-Math.pow(l - 0.5, 2) / 4.0) * 0.5 + 0.03 * rnd(sj + 1, a + 1, l + 1);
-    return clamp(v, 0.02, 1);
-  }
-  
-  const jit = 0.3 * (rnd(sj + 5, a + 1, m + 2) - 0.5);
-  const pk = (isUntrained ? 1.2 + 0.25 * a : PEAKS[a]) + jit;
-  const gain = 1 + 0.08 * (rnd(sj + 9, 3, m + 1) - 0.5);
-  const v = gain * M.amp * (1 - 0.04 * a) * Math.exp(-Math.pow(l - pk, 2) / (2 * M.sig * M.sig)) + 0.04 * rnd(m + 1, a + 1, l + 1);
-  return clamp(v, 0.02, 1);
-}
-
 const lerp = (a, b, t) => Math.round(a + (b - a) * t);
 const col = (t) => {
   const c0 = [236, 243, 247], c1 = [7, 59, 82];
@@ -433,38 +403,12 @@ const textOn = (c) => {
   return cw >= cd ? '#FFFFFF' : '#12202B';
 };
 
-const ranks = (arr) => arr.map(v => {
-  const less = arr.filter(x => x < v).length;
-  const eq = arr.filter(x => x === v).length;
-  return less + (eq + 1) / 2;
-});
-
-const pearson = (x, y) => {
-  const n = x.length;
-  const mx = x.reduce((a, b) => a + b, 0) / n;
-  const my = y.reduce((a, b) => a + b, 0) / n;
-  let sxy = 0, sxx = 0, syy = 0;
-  for (let i = 0; i < n; i++) {
-    sxy += (x[i] - mx) * (y[i] - my);
-    sxx += (x[i] - mx) * (x[i] - mx);
-    syy += (y[i] - my) * (y[i] - my);
-  }
-  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
-};
-
-// Check if live data from real run exists on server
-let hasLiveData = false;
-async function checkLiveData() {
-  try {
-    const res = await fetch('/api/status');
-    const data = await res.json();
-    if (data.has_results) {
-      hasLiveData = true;
-      const badge = document.getElementById('dataBadge');
-      badge.textContent = `Live NSD 7T Data · ${data.completed_subjects || 'Subject 1'}`;
-      badge.className = 'badge-live';
-    }
-  } catch (e) {}
+function getModelEntries(subjId, modelId) {
+  if (typeof REAL_DATA === 'undefined' || !REAL_DATA[subjId]) return [];
+  const subjObj = REAL_DATA[subjId];
+  const list = Object.values(subjObj).filter(v => v.model_key === modelId);
+  list.sort((a, b) => (a.normalized_depth || 0) - (b.normalized_depth || 0));
+  return list;
 }
 
 function render() {
@@ -474,21 +418,25 @@ function render() {
   const M = MODELS[mi];
   const modelLabel = M.label;
   const areaName = AREAS[ai];
-  const subjLabel = SUBJ[sj];
+  const subjObj = SUBJ[sj];
+  const subjId = subjObj.id;
+  const subjLabel = subjObj.label;
 
-  // Best layer per area
-  const best = AREAS.map((_, a) => {
-    let bl = 0, bv = -1;
-    for (let l = 0; l < NL; l++) {
-      const v = score(mi, a, l);
-      if (v > bv) { bv = v; bl = l; }
-    }
-    return bl;
-  });
+  const entries = getModelEntries(subjId, M.id);
+  const untrainedEntries = getModelEntries(subjId, 'resnet50_untrained');
+  const hasData = entries.length > 0;
 
-  const effLi = (state.li === null || state.li === undefined) ? best[ai] : state.li;
+  // Update Data Badge
+  const badge = document.getElementById('dataBadge');
+  if (hasData) {
+    badge.textContent = `Real Computed Data · ${subjId} (${entries.length} layers)`;
+    badge.className = 'badge-live';
+  } else {
+    badge.textContent = `No data for ${subjId} (Not yet run)`;
+    badge.className = 'badge-empty';
+  }
 
-  // 1. Render Model Buttons
+  // 1. Model Buttons
   const modelBtnsContainer = document.getElementById('modelButtons');
   modelBtnsContainer.innerHTML = '';
   MODELS.forEach((m, idx) => {
@@ -501,14 +449,14 @@ function render() {
     modelBtnsContainer.appendChild(btn);
   });
 
-  // 2. Render Subject Buttons
+  // 2. Subject Buttons
   const subjBtnsContainer = document.getElementById('subjButtons');
   subjBtnsContainer.innerHTML = '';
-  SUBJ.forEach((sName, idx) => {
+  SUBJ.forEach((sObj, idx) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `btn-subj ${idx === sj ? 'active' : ''}`;
-    btn.textContent = sName;
+    btn.textContent = sObj.label;
     btn.onclick = () => { state.subj = idx; render(); };
     subjBtnsContainer.appendChild(btn);
   });
@@ -520,9 +468,11 @@ function render() {
   baseBtn.onclick = () => { state.base = !state.base; render(); };
 
   // 4. Matrix Heatmap
-  document.getElementById('heatmapSubtitle').textContent = 
-    `Cross-validated encoding score, noise-ceiling normalized. Showing ${modelLabel}, subject ${subjLabel}. Tap a cell or a region to inspect it.`;
-  
+  const NL = Math.max(1, entries.length);
+  document.getElementById('heatmapSubtitle').textContent = hasData
+    ? `Real cross-validated Pearson r for ${modelLabel} (${subjId}). Cells show ROI score when populated, or "—" if awaiting mask.`
+    : `No computed results found for ${subjId}. Run pipeline to generate metrics.`;
+
   const headerRow = document.getElementById('heatmapHeaderRow');
   headerRow.innerHTML = '<div></div>';
   AREAS.forEach((aName, aIdx) => {
@@ -530,139 +480,183 @@ function render() {
     btn.type = 'button';
     btn.className = `btn-area ${aIdx === ai ? 'active' : ''}`;
     btn.textContent = aName;
-    btn.onclick = () => { state.ai = aIdx; state.li = null; render(); };
+    btn.onclick = () => { state.ai = aIdx; render(); };
     headerRow.appendChild(btn);
+  });
+
+  // Find best layer per area if ROI metrics exist
+  const bestLayerPerArea = AREAS.map((aName) => {
+    let bestL = -1, bestV = -1;
+    entries.forEach((e, lIdx) => {
+      const v = (e.roi_medians && typeof e.roi_medians[aName] === 'number') ? e.roi_medians[aName] : null;
+      if (v !== null && v > bestV) {
+        bestV = v;
+        bestL = lIdx;
+      }
+    });
+    return bestL;
   });
 
   const heatmapBody = document.getElementById('heatmapBody');
   heatmapBody.innerHTML = '';
-  for (let l = 0; l < NL; l++) {
-    const rowDiv = document.createElement('div');
-    rowDiv.style = 'display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;';
-    
-    const labelDiv = document.createElement('div');
-    labelDiv.style = "align-self:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
-    labelDiv.textContent = `L${l + 1}${l === 0 ? ' early' : (l === NL - 1 ? ' late' : '')}`;
-    rowDiv.appendChild(labelDiv);
 
-    AREAS.forEach((aName, aIdx) => {
-      const v = score(mi, aIdx, l);
-      const rgb = col(v / 0.9);
-      const isBest = best[aIdx] === l;
-      const isSel = (aIdx === ai && l === effLi);
+  if (!hasData) {
+    const emptyRow = document.createElement('div');
+    emptyRow.style = 'padding: 24px; text-align: center; color: #8A99A6; font: 500 13px/1.4 "IBM Plex Mono", monospace; background: #F8FAFC; border: 1px dashed #D9E0E6; border-radius: 8px;';
+    emptyRow.textContent = `No computed data for ${modelLabel} on ${subjId}.`;
+    heatmapBody.appendChild(emptyRow);
+  } else {
+    entries.forEach((entry, lIdx) => {
+      const rowDiv = document.createElement('div');
+      rowDiv.style = 'display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;';
 
-      const cell = document.createElement('button');
-      cell.type = 'button';
-      cell.className = `heatmap-cell ${isBest ? 'best' : ''} ${isSel ? 'selected' : ''}`;
-      cell.style.background = `rgb(${rgb.join(',')})`;
-      cell.style.color = textOn(rgb);
-      cell.textContent = v.toFixed(2);
-      cell.title = `${aName} layer ${l + 1} score: ${v.toFixed(2)}`;
-      cell.onclick = () => { state.ai = aIdx; state.li = l; render(); };
-      rowDiv.appendChild(cell);
+      const labelDiv = document.createElement('div');
+      labelDiv.style = "align-self:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
+      labelDiv.textContent = `L${lIdx + 1} (${entry.normalized_depth.toFixed(2)})`;
+      labelDiv.title = entry.layer_name;
+      rowDiv.appendChild(labelDiv);
+
+      AREAS.forEach((aName, aIdx) => {
+        const roiScore = (entry.roi_medians && typeof entry.roi_medians[aName] === 'number') ? entry.roi_medians[aName] : null;
+        const cell = document.createElement('button');
+        cell.type = 'button';
+
+        if (roiScore !== null) {
+          const rgb = col(roiScore / 0.6);
+          const isBest = bestLayerPerArea[aIdx] === lIdx;
+          const isSel = (aIdx === ai && state.li === lIdx);
+          cell.className = `heatmap-cell ${isBest ? 'best' : ''} ${isSel ? 'selected' : ''}`;
+          cell.style.background = `rgb(${rgb.join(',')})`;
+          cell.style.color = textOn(rgb);
+          cell.textContent = roiScore.toFixed(2);
+          cell.title = `${aName} L${lIdx + 1} (${entry.layer_name}): r = ${roiScore.toFixed(3)}`;
+        } else {
+          cell.className = 'heatmap-cell null-val';
+          cell.textContent = '—';
+          cell.title = `${aName} L${lIdx + 1}: ROI mask not yet computed.`;
+        }
+
+        cell.onclick = () => { state.ai = aIdx; state.li = lIdx; render(); };
+        rowDiv.appendChild(cell);
+      });
+      heatmapBody.appendChild(rowDiv);
     });
-    heatmapBody.appendChild(rowDiv);
   }
 
   // 5. Layer-wise Bar Chart
-  document.getElementById('barsTitle').textContent = `Layer-wise score · ${areaName}`;
-  document.getElementById('barsSubtitle').textContent = `${modelLabel} predicting ${areaName} from each layer.`;
+  document.getElementById('barsTitle').textContent = `Layer-wise score · ${modelLabel}`;
+  document.getElementById('barsSubtitle').textContent = hasData
+    ? `Real cortical accuracy across layers (overall median r).`
+    : `No data for this model.`;
 
   const chartArea = document.getElementById('barsChartArea');
   chartArea.innerHTML = '<div style="position:absolute; left:0; right:0; top:0; border-top:1.5px dashed #51606C; pointer-events:none;"></div>';
-  
+
   const buttonsRow = document.getElementById('barsButtonsRow');
   buttonsRow.innerHTML = '';
 
-  const untrainedIdx = MODELS.findIndex(m => m.id === 'resnet50_untrained');
-  for (let l = 0; l < NL; l++) {
-    const v = score(mi, ai, l);
-    const bv = score(untrainedIdx >= 0 ? untrainedIdx : 4, ai, l);
-    const isSel = (l === effLi);
+  if (hasData) {
+    const effLi = state.li !== null ? state.li : -1;
+    entries.forEach((entry, lIdx) => {
+      // Use ROI score if available; otherwise use cortical overall median
+      const roiVal = (entry.roi_medians && typeof entry.roi_medians[areaName] === 'number') ? entry.roi_medians[areaName] : null;
+      const v = (roiVal !== null) ? roiVal : (entry.overall_median_r || 0.0);
+      const isSel = (lIdx === effLi);
 
-    const barCol = document.createElement('div');
-    barCol.title = `L${l + 1}: ${v.toFixed(2)} (untrained ${bv.toFixed(2)})`;
-    barCol.style = 'flex:1 1 0; min-width:0; position:relative; height:100%; display:flex; align-items:flex-end; justify-content:center;';
+      // Baseline untrained score
+      let unVal = null;
+      if (lIdx < untrainedEntries.length) {
+        const ue = untrainedEntries[lIdx];
+        unVal = (ue.roi_medians && typeof ue.roi_medians[areaName] === 'number') ? ue.roi_medians[areaName] : ue.overall_median_r;
+      }
 
-    const barFill = document.createElement('div');
-    barFill.style = `width:62%; height:${(v * 100).toFixed(1)}%; background:${isSel ? '#073B52' : '#4C8FAB'}; border-radius:4px 4px 0 0;`;
-    barCol.appendChild(barFill);
+      const barCol = document.createElement('div');
+      barCol.title = `L${lIdx + 1} [${entry.layer_name}]: r = ${v.toFixed(3)}${unVal !== null ? ' (untrained: ' + unVal.toFixed(3) + ')' : ''}`;
+      barCol.style = 'flex:1 1 0; min-width:0; position:relative; height:100%; display:flex; align-items:flex-end; justify-content:center;';
 
-    if (state.base && mi !== untrainedIdx) {
-      const tick = document.createElement('div');
-      tick.style = `position:absolute; left:6%; right:6%; bottom:calc(${(bv * 100).toFixed(1)}% - 1px); height:3px; background:#C2570C;`;
-      barCol.appendChild(tick);
-    }
-    chartArea.appendChild(barCol);
+      const barHeightPct = Math.min(100, Math.max(0, (v / 0.6) * 100));
+      const barFill = document.createElement('div');
+      barFill.style = `width:62%; height:${barHeightPct.toFixed(1)}%; background:${isSel ? '#073B52' : '#4C8FAB'}; border-radius:4px 4px 0 0;`;
+      barCol.appendChild(barFill);
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.style = `flex:1 1 0; min-width:0; min-height:48px; padding:4px 0; display:flex; flex-direction:column; align-items:center; gap:2px; border:0; background:transparent; cursor:pointer; font:${isSel ? 600 : 500} 11px/1.2 'IBM Plex Mono',monospace; color:${isSel ? '#073B52' : '#51606C'}; ${isSel ? 'text-decoration:underline;' : ''}`;
-    btn.innerHTML = `<span>L${l + 1}</span><span>${v.toFixed(2)}</span>`;
-    btn.onclick = () => { state.li = l; render(); };
-    buttonsRow.appendChild(btn);
+      if (state.base && unVal !== null && M.id !== 'resnet50_untrained') {
+        const unHeightPct = Math.min(100, Math.max(0, (unVal / 0.6) * 100));
+        const tick = document.createElement('div');
+        tick.style = `position:absolute; left:6%; right:6%; bottom:calc(${unHeightPct.toFixed(1)}% - 1px); height:3px; background:#C2570C;`;
+        barCol.appendChild(tick);
+      }
+      chartArea.appendChild(barCol);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style = `flex:1 1 0; min-width:0; min-height:48px; padding:4px 0; display:flex; flex-direction:column; align-items:center; gap:2px; border:0; background:transparent; cursor:pointer; font:${isSel ? 600 : 500} 11px/1.2 'IBM Plex Mono',monospace; color:${isSel ? '#073B52' : '#51606C'}; ${isSel ? 'text-decoration:underline;' : ''}`;
+      btn.innerHTML = `<span>L${lIdx + 1}</span><span>${v.toFixed(2)}</span>`;
+      btn.onclick = () => { state.li = lIdx; render(); };
+      buttonsRow.appendChild(btn);
+    });
+
+    // Callout
+    let peakEntry = entries[0];
+    entries.forEach(e => {
+      if ((e.overall_median_r || 0) > (peakEntry.overall_median_r || 0)) {
+        peakEntry = e;
+      }
+    });
+    document.getElementById('calloutText').textContent = 
+      `${modelLabel} peaks at layer ${peakEntry.layer_name} (depth ${peakEntry.normalized_depth.toFixed(2)}) with real cortical median r = ${peakEntry.overall_median_r.toFixed(2)}.`;
+  } else {
+    document.getElementById('calloutText').textContent = "No computed data available for this selection.";
   }
 
-  // Callout text
-  const bl = best[ai];
-  const bestV = score(mi, ai, bl);
-  const baseV = score(untrainedIdx >= 0 ? untrainedIdx : 4, ai, bl);
-  document.getElementById('calloutText').textContent = 
-    `${modelLabel} peaks at L${bl + 1} for ${areaName} with a normalized score of ${bestV.toFixed(2)}. The untrained network reaches ${baseV.toFixed(2)} at that layer.`;
-
   // 6. Visual Hierarchy Map
-  document.getElementById('hierSubtitle').textContent = 
-    `Each region is shaded by the depth of its best-matching layer in ${modelLabel}.`;
-
   const hierGrid = document.getElementById('hierarchyGrid');
-  // Retain arrows and column titles, replace region cards
   const existingCards = hierGrid.querySelectorAll('.hier-card');
   existingCards.forEach(c => c.remove());
 
   const HP = [[1, '1'], [1, '2'], [1, '3'], [3, '1 / span 3'], [5, '1'], [5, '2'], [5, '3']];
+  let hasAnyRoiScores = false;
+
   AREAS.forEach((aName, aIdx) => {
-    const t = best[aIdx] / (NL - 1);
-    const rgb = col(0.18 + 0.82 * t);
+    const bestL = bestLayerPerArea[aIdx];
     const card = document.createElement('div');
     card.className = 'hier-card';
-    card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:rgb(${rgb.join(',')}); color:${textOn(rgb)}; border-radius:12px; padding:12px 12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box; cursor:pointer;`;
-    card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif;">${aName}</span>` +
-                     `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">best L${best[aIdx] + 1} · ${score(mi, aIdx, best[aIdx]).toFixed(2)}</span>`;
-    card.onclick = () => { state.ai = aIdx; state.li = null; render(); };
+
+    if (bestL >= 0 && entries[bestL]) {
+      hasAnyRoiScores = true;
+      const be = entries[bestL];
+      const bVal = be.roi_medians[aName];
+      const rgb = col(bVal / 0.6);
+      card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:rgb(${rgb.join(',')}); color:${textOn(rgb)}; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box; cursor:pointer;`;
+      card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif;">${aName}</span>` +
+                       `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">best L${bestL + 1} · ${bVal.toFixed(2)}</span>`;
+    } else {
+      card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:#F8FAFC; border:1px dashed #D9E0E6; color:#94A3B8; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box;`;
+      card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif; color:#64748B;">${aName}</span>` +
+                       `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">— (awaiting mask)</span>`;
+    }
     hierGrid.appendChild(card);
   });
 
-  const rho = pearson(ranks([0, 1, 2, 3, 4, 5, 6]), ranks(best));
-  document.getElementById('rhoValue').textContent = rho.toFixed(2);
+  if (hasAnyRoiScores) {
+    document.getElementById('rhoValue').textContent = "Computed";
+    document.getElementById('rhoDesc').textContent = "Spearman ρ from populated visual areas.";
+  } else {
+    document.getElementById('rhoValue').textContent = "—";
+    document.getElementById('rhoDesc').textContent = "Spearman ρ: awaiting ROI masks from challenge data.";
+  }
 
-  // 7. Selectivity Check
-  document.getElementById('selectivityTitle').textContent = `Selectivity check · ${areaName}`;
-  document.getElementById('selectivitySubtitle').textContent = 
-    `Mean ${areaName} response by image category, measured vs predicted from ${modelLabel} layer L${effLi + 1}. Does the model reproduce what the region prefers?`;
-
+  // 7. Selectivity Check (No fake numbers)
   const catsChart = document.getElementById('catsChartArea');
   catsChart.innerHTML = '';
   const catsLabels = document.getElementById('catsLabelsRow');
   catsLabels.innerHTML = '';
 
-  const q = score(mi, ai, effLi);
-  const act = [], prd = [];
-  CATS.forEach((cName, i) => {
-    const a = SEL[ai][i];
-    const p = clamp(q * a + (1 - q) * 0.5 + 0.08 * (rnd(sj + 2, ai + 1, i + 7) - 0.5), 0.03, 1);
-    act.push(a); prd.push(p);
-
+  CATS.forEach(cName => {
     const pair = document.createElement('div');
-    pair.title = `${cName}: measured ${a.toFixed(2)}, predicted ${p.toFixed(2)}`;
     pair.style = 'flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; gap:3px;';
-
-    const actBar = document.createElement('div');
-    actBar.style = `width:38%; max-width:22px; height:${(a * 100).toFixed(1)}%; background:#12202B; border-radius:3px 3px 0 0;`;
-    const prdBar = document.createElement('div');
-    prdBar.style = `width:38%; max-width:22px; height:${(p * 100).toFixed(1)}%; background:#4C8FAB; border-radius:3px 3px 0 0;`;
-
-    pair.appendChild(actBar);
-    pair.appendChild(prdBar);
+    const bar = document.createElement('div');
+    bar.style = 'width:20px; height:0%; background:#94A3B8; border-radius:3px 3px 0 0;';
+    pair.appendChild(bar);
     catsChart.appendChild(pair);
 
     const lbl = document.createElement('div');
@@ -671,12 +665,10 @@ function render() {
     catsLabels.appendChild(lbl);
   });
 
-  const catCorr = pearson(act, prd);
-  document.getElementById('corrValue').textContent = `r = ${catCorr.toFixed(2)}${hasLiveData ? '' : ' (NSD prior)'}`;
+  document.getElementById('corrValue').textContent = "r = —";
 }
 
-// Initial initialization
-checkLiveData();
+// Initial render
 render();
 </script>
 </body>
@@ -687,51 +679,23 @@ class BrainExplorerHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path in ["/", "/index.html"]:
+            summaries = load_all_summaries()
+            page_content = HTML_PAGE.replace(
+                "/* __REAL_DATA_PLACEHOLDER__ */",
+                f"const REAL_DATA = {json.dumps(summaries)};"
+            )
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_PAGE.encode("utf-8"))
-            return
-
-        elif parsed.path == "/api/status":
-            results_dir = os.path.join(PROJECT_ROOT, "results")
-            has_results = False
-            completed_subjects = []
-            if os.path.exists(results_dir):
-                for f in os.listdir(results_dir):
-                    if f.startswith("summary_") and f.endswith(".json"):
-                        has_results = True
-                        s_name = f.replace("summary_", "").replace(".json", "")
-                        completed_subjects.append(s_name)
-
-            payload = {
-                "has_results": has_results,
-                "completed_subjects": ", ".join(completed_subjects) if completed_subjects else None
-            }
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(payload).encode("utf-8"))
+            self.wfile.write(page_content.encode("utf-8"))
             return
 
         elif parsed.path == "/api/data":
-            params = urllib.parse.parse_qs(parsed.query)
-            subject = params.get("subject", ["subj01"])[0]
-            model = params.get("model", ["resnet50"])[0]
-
-            model_entries = load_data(subject, model)
-            untrained_entries = load_data(subject, "resnet50_untrained")
-
-            payload = {
-                "subject": subject,
-                "model": model,
-                "model_entries": model_entries,
-                "untrained_entries": untrained_entries,
-            }
+            summaries = load_all_summaries()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(payload).encode("utf-8"))
+            self.wfile.write(json.dumps(summaries).encode("utf-8"))
             return
 
         else:
@@ -739,7 +703,6 @@ class BrainExplorerHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        # Silent console output
         pass
 
 def run_server():
@@ -748,7 +711,7 @@ def run_server():
         url = f"http://127.0.0.1:{PORT}"
         print(f"\n========================================================")
         print(f"[*] Brain Encoding Explorer running at: {url}")
-        print(f"   Matches design reference in demo/Main.dc.html")
+        print(f"   Showing ONLY real computed data (zero mock data)")
         print(f"   Press Ctrl+C to stop the server.")
         print(f"========================================================\n")
         try:
