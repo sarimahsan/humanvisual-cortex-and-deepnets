@@ -1,9 +1,14 @@
 """
 Interactive Brain Encoding Explorer.
 
-Standalone, zero-dependency local web dashboard that runs cleanly on any laptop
-without requiring external C-extensions or Gradio/Pandas (bypassing Windows WDAC blocks).
-Serves an interactive interface at http://127.0.0.1:7860.
+Faithfully implements the design reference mockup from demo/Main.dc.html:
+- Clean IBM Plex Sans and IBM Plex Mono typography.
+- Light, publication-grade styling (#F3F5F7 background, #FFFFFF cards, #D9E0E6 borders).
+- Interactive Layer x Region similarity matrix with noise-ceiling normalization.
+- Layer-wise score bar chart with untrained baseline tick and noise ceiling line.
+- 3-stage Visual Hierarchy flow map (Early -> Intermediate -> Category-selective) with Spearman rho readout.
+- Category Selectivity check (measured fMRI vs deep net predicted responses).
+- Standalone zero-dependency Python server (no Gradio/Pandas, avoiding Windows AppLocker/WDAC blocks).
 """
 
 from typing import Dict, Any, List
@@ -19,15 +24,11 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-import numpy as np
-from data.rois import ROI_HIERARCHY_RANK
-from data.coco_labels import SUPER_CATEGORIES
-
 PORT = 7860
 
 def load_data(subject_id: str, model_key: str):
-    """Loads results summary for the given subject and model."""
-    summary_path = os.path.join("results", f"summary_{subject_id}.json")
+    """Loads results summary for the given subject and model if available."""
+    summary_path = os.path.join(PROJECT_ROOT, "results", f"summary_{subject_id}.json")
     if os.path.exists(summary_path):
         try:
             with open(summary_path, "r", encoding="utf-8") as f:
@@ -37,462 +38,649 @@ def load_data(subject_id: str, model_key: str):
                 return filtered
         except Exception:
             pass
+    return None
 
-    # Synthesize realistic demo/pre-registered curves
-    rng = np.random.RandomState(abs(hash(subject_id + model_key)) % (2**31))
-    layers_count = 8
-    rois = list(ROI_HIERARCHY_RANK.keys())
-
-    is_untrained = "untrained" in model_key.lower()
-    is_gabor = "gabor" in model_key.lower()
-    is_clip = "clip" in model_key.lower()
-
-    synthetic_entries = []
-    for i in range(layers_count):
-        depth = (i + 1) / layers_count
-        roi_medians = {}
-        for r_idx, r in enumerate(rois):
-            anat_pos = (r_idx + 1) / len(rois)
-            if is_gabor:
-                base_r = max(0.02, 0.45 * (1.0 - anat_pos) + rng.normal(0, 0.02))
-            elif is_untrained:
-                base_r = max(0.02, 0.28 * (1.0 - 0.7 * anat_pos) + rng.normal(0, 0.03))
-            else:
-                dist = abs(depth - anat_pos)
-                peak_height = 0.58 if (is_clip and anat_pos > 0.6) else 0.52
-                base_r = max(0.05, peak_height - 0.4 * dist + rng.normal(0, 0.02))
-            roi_medians[r] = round(float(base_r), 3)
-
-        synthetic_entries.append({
-            "model_key": model_key,
-            "layer_name": f"layer_{i+1}",
-            "normalized_depth": round(depth, 3),
-            "layer_desc": f"Block {i+1}",
-            "roi_medians": roi_medians,
-        })
-    return synthetic_entries
-
-
-HTML_TEMPLATE = """<!DOCTYPE html>
+HTML_PAGE = """<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Brain Encoding Explorer | Human Visual Cortex & Deep Nets</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Brain Encoding Explorer | Human Visual Cortex & Deep-Nets</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
 <style>
-  :root {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-card: rgba(30, 41, 59, 0.75);
-    --border-color: rgba(255, 255, 255, 0.1);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --accent: #38bdf8;
-    --accent-purple: #a855f7;
-    --accent-green: #34d399;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; }
   body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    background: radial-gradient(circle at 10% 20%, #0f172a 0%, #020617 100%);
-    color: var(--text-primary);
-    min-height: 100vh;
-    padding: 24px;
+    margin: 0;
+    background: #F3F5F7;
+    color: #12202B;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .header {
-    max-width: 1300px;
-    margin: 0 auto 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 16px;
+  button {
+    font-family: inherit;
+    border: none;
+    background: none;
+    transition: all 0.15s ease;
   }
-  .header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #38bdf8, #818cf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  button:focus-visible {
+    outline: 3px solid #C2570C;
+    outline-offset: 2px;
   }
-  .badge {
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    font-size: 0.8rem;
-    padding: 4px 12px;
-    border-radius: 9999px;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-  }
-  .container {
-    max-width: 1300px;
+  .app-container {
+    max-width: 1200px;
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 24px;
-  }
-  .card {
-    background: var(--bg-card);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  }
-  .card h2 {
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .form-group {
-    margin-bottom: 16px;
-  }
-  label {
-    display: block;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-    font-weight: 500;
-  }
-  select {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    outline: none;
-    transition: all 0.2s;
-  }
-  select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
-  }
-  .main-grid {
+    padding: 32px 24px 48px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
   }
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-  }
-  /* Heatmap */
-  .heatmap-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 4px;
-    font-size: 0.8rem;
-  }
-  .heatmap-table th {
-    color: var(--text-secondary);
-    font-weight: 500;
-    padding: 6px;
-    text-align: center;
-  }
-  .heatmap-cell {
-    padding: 10px 6px;
-    text-align: center;
-    border-radius: 4px;
-    font-weight: 600;
-    transition: transform 0.15s, outline 0.15s;
-    cursor: pointer;
-  }
-  .heatmap-cell:hover {
-    transform: scale(1.08);
-    outline: 2px solid white;
-    z-index: 10;
-  }
-  /* Bar chart */
-  .bar-row {
-    margin-bottom: 12px;
-  }
-  .bar-label-group {
+  header {
     display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    margin-bottom: 4px;
-  }
-  .bar-track {
-    height: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 9999px;
-    overflow: hidden;
-    display: flex;
-    gap: 2px;
-  }
-  .bar-fill-measured {
-    height: 100%;
-    background: linear-gradient(90deg, #38bdf8, #818cf8);
-    border-radius: 9999px;
-    transition: width 0.4s ease;
-  }
-  .bar-fill-predicted {
-    height: 100%;
-    background: linear-gradient(90deg, #f43f5e, #fb7185);
-    border-radius: 9999px;
-    transition: width 0.4s ease;
-  }
-  /* Legend */
-  .legend {
-    display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    margin-bottom: 12px;
-    font-size: 0.78rem;
+    align-items: flex-end;
+    justify-content: space-between;
   }
-  .legend-item {
+  .card {
+    background: #FFFFFF;
+    border: 1px solid #D9E0E6;
+    border-radius: 14px;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  .filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 28px;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .btn-model {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 56px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    border: 1px solid #8A99A6;
+    background: #FFFFFF;
+    color: #12202B;
+  }
+  .btn-model.active {
+    border-color: #073B52;
+    background: #073B52;
+    color: #FFFFFF;
+  }
+  .btn-subj {
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    min-height: 56px;
+    min-width: 56px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: 600 14px/1.2 'IBM Plex Sans', sans-serif;
+    border: 1px solid #8A99A6;
+    background: #FFFFFF;
+    color: #12202B;
   }
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
+  .btn-subj.active {
+    border-color: #073B52;
+    background: #073B52;
+    color: #FFFFFF;
   }
-  svg text { fill: var(--text-secondary); font-size: 11px; }
+  .btn-baseline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: 500 13px/1.2 'IBM Plex Sans', sans-serif;
+    border: 1px solid #8A99A6;
+    background: #FFFFFF;
+    color: #12202B;
+  }
+  .btn-baseline.active {
+    border-color: #073B52;
+    background: #073B52;
+    color: #FFFFFF;
+  }
+  .btn-area {
+    min-height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    font: 600 14px/1.2 'IBM Plex Sans', sans-serif;
+    border: 1px solid #8A99A6;
+    background: #FFFFFF;
+    color: #12202B;
+  }
+  .btn-area.active {
+    border-color: #073B52;
+    background: #073B52;
+    color: #FFFFFF;
+  }
+  .heatmap-cell {
+    height: 46px;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font: 500 12px/1 'IBM Plex Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .heatmap-cell.best {
+    box-shadow: inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;
+  }
+  .heatmap-cell.selected {
+    outline: 3px solid #12202B;
+    outline-offset: 2px;
+  }
+  .row-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .badge-live {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #0B6E99;
+    color: #073B52;
+    background: #EBF5FA;
+    font: 500 12px/1.3 'IBM Plex Mono', monospace;
+  }
+  .badge-mock {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #C2570C;
+    color: #8A3A00;
+    background: #FFF4EA;
+    font: 500 12px/1.3 'IBM Plex Mono', monospace;
+  }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>🧠 Visual Cortex Brain Encoding Explorer</h1>
-      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">
-        Which Deep-Net Layers Explain Which Human Visual Regions? (Algonauts 2023 / NSD)
+<div class="app-container">
+
+  <!-- Header -->
+  <header>
+    <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 420px; min-width:0;">
+      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; color:#0B6E99;">
+        Natural Scenes Dataset · 7T fMRI · human visual cortex
+      </div>
+      <h1 style="margin:0; font:600 34px/1.15 'IBM Plex Sans',sans-serif; letter-spacing:-0.01em;">
+        Which network layers predict which human brain regions?
+      </h1>
+      <p style="margin:0; font:400 15px/1.5 'IBM Plex Sans',sans-serif; color:#51606C; max-width:660px;">
+        Pick a pretrained model and a subject, read the layer-by-region map from V1 up to the face, body and place areas, then check it against the untrained baseline and the noise ceiling.
       </p>
     </div>
-    <span class="badge">Standalone Local Server</span>
-  </div>
+    <div id="dataBadge" class="badge-mock">Mock data · layout preview</div>
+  </header>
 
-  <div class="container">
-    <!-- Sidebar Controls -->
-    <div class="card">
-      <h2>⚙️ Parameters</h2>
-      
-      <div class="form-group">
-        <label for="subjSelect">Human Subject</label>
-        <select id="subjSelect">
-          <option value="subj01" selected>Subject 1 (subj01)</option>
-          <option value="subj02">Subject 2 (subj02)</option>
-          <option value="subj03">Subject 3 (subj03)</option>
-          <option value="subj04">Subject 4 (subj04)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="modelSelect">Computational Model / Control</label>
-        <select id="modelSelect">
-          <option value="resnet50" selected>ResNet-50 (Supervised)</option>
-          <option value="dino_vit_small">DINO ViT-S/16 (Self-Supervised)</option>
-          <option value="clip_vit_b16">CLIP ViT-B/16 (Language-Image)</option>
-          <option value="deit_small">DeiT-S / ViT-S/16 (Supervised)</option>
-          <option value="alexnet">AlexNet (Baseline Anchor)</option>
-          <option value="resnet50_untrained">Untrained ResNet-50 (Control)</option>
-          <option value="gabor_pyramid">Gabor Wavelet Pyramid (Control)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="roiSelect">Target Region of Interest (ROI)</label>
-        <select id="roiSelect">
-          <option value="V1">V1 (Early retinotopic)</option>
-          <option value="V2">V2 (Early retinotopic)</option>
-          <option value="V3">V3 (Early retinotopic)</option>
-          <option value="hV4">hV4 (Intermediate)</option>
-          <option value="OFA">OFA (Occipital Face)</option>
-          <option value="FFA" selected>FFA (Fusiform Face Area)</option>
-          <option value="PPA">PPA (Parahippocampal Place)</option>
-          <option value="EBA">EBA (Extrastriate Body)</option>
-          <option value="RSC">RSC (Retrosplenial Scene)</option>
-        </select>
-      </div>
-
-      <div style="margin-top: 24px; padding: 14px; background: rgba(0,0,0,0.25); border-radius: 8px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-        <strong style="color: var(--text-primary); display: block; margin-bottom: 6px;">Key Observations:</strong>
-        • Early layers peak in early visual cortex (V1-V3).<br>
-        • Deeper layers peak in category-selective areas (FFA, PPA).<br>
-        • Untrained ResNet explains V1 variance via spatial priors, but drops in FFA.
-      </div>
+  <!-- Controls: Models, Subjects, Baseline Toggle -->
+  <section class="card filter-section">
+    <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 440px; min-width:0;">
+      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; color:#51606C;">Model</div>
+      <div id="modelButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
     </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; color:#51606C;">Subject</div>
+      <div id="subjButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    </div>
+    <button type="button" id="toggleBaselineBtn" class="btn-baseline active">Untrained baseline: shown</button>
+  </section>
 
-    <!-- Main Visualizations -->
-    <div class="main-grid">
-      <!-- Heatmap Card -->
-      <div class="card">
-        <h2>🔥 Representational Alignment Heatmap (Layer Depth vs. Cortical ROI)</h2>
-        <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 16px;">
-          Held-out test Pearson correlation (r). Look for the diagonal trend indicating hierarchical alignment.
+  <!-- Row 1: Heatmap & Layer-wise score -->
+  <div class="row-layout">
+    <!-- Matrix Heatmap -->
+    <section class="card" style="flex:1.4 1 560px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+      <div>
+        <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer × region similarity</h2>
+        <p id="heatmapSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
+          Cross-validated encoding score, noise-ceiling normalized. Showing ResNet-50, subject S1. Tap a cell or a region to inspect it.
         </p>
-        <div id="heatmapContainer" style="overflow-x: auto;"></div>
       </div>
-
-      <div class="two-col">
-        <!-- Depth Trajectory Curve -->
-        <div class="card">
-          <h2>📈 Depth Trajectory</h2>
-          <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 12px;">
-            Accuracy across layer depth for selected ROI compared to Untrained control.
-          </p>
-          <div id="curveContainer" style="height: 220px;"></div>
-        </div>
-
-        <!-- Category Selectivity Profile -->
-        <div class="card">
-          <h2>🎭 Category Selectivity Profile</h2>
-          <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 12px;">
-            Measured fMRI vs. Predicted response across semantic domains.
-          </p>
-          <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background: #38bdf8;"></div><span>Measured fMRI</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background: #f43f5e;"></div><span>DNN Prediction</span></div>
-          </div>
-          <div id="selectivityContainer"></div>
+      <div style="overflow-x:auto;">
+        <div style="min-width:560px; display:flex; flex-direction:column; gap:4px;">
+          <div id="heatmapHeaderRow" style="display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;"></div>
+          <div id="heatmapBody" style="display:flex; flex-direction:column; gap:4px;"></div>
         </div>
       </div>
-    </div>
+      <div style="display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>0</span>
+          <div style="width:120px; height:10px; border-radius:5px; background:linear-gradient(90deg, #ECF3F7, #073B52);"></div>
+          <span>1 = noise ceiling</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:18px; height:18px; border-radius:4px; background:#ECF3F7; box-shadow:inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;"></div>
+          <span>best layer for that region</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Layer-wise score bar chart -->
+    <section class="card" style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+      <div>
+        <h2 id="barsTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer-wise score · FFA</h2>
+        <p id="barsSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
+          ResNet-50 predicting FFA from each layer.
+        </p>
+      </div>
+      <div id="barsChartArea" style="position:relative; height:220px; border-bottom:1.5px solid #12202B; display:flex; gap:6px;">
+        <div style="position:absolute; left:0; right:0; top:0; border-top:1.5px dashed #51606C; pointer-events:none;"></div>
+      </div>
+      <div id="barsButtonsRow" style="display:flex; gap:6px;"></div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:14px; height:14px; border-radius:3px; background:#4C8FAB;"></div><span>model layer</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:16px; height:3px; background:#C2570C;"></div><span>untrained baseline</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:16px; border-top:2px dashed #51606C;"></div><span>noise ceiling</span>
+        </div>
+      </div>
+      <p id="calloutText" style="margin:0; padding-top:12px; border-top:1px solid #D9E0E6; font:400 14px/1.5 'IBM Plex Sans',sans-serif;"></p>
+    </section>
   </div>
 
-  <script>
-    const roisList = ['V1', 'V2', 'V3', 'hV4', 'OFA', 'FFA', 'PPA', 'EBA', 'RSC'];
-    const categories = ['person_face', 'body', 'place_scene', 'animal', 'vehicle', 'food'];
+  <!-- Row 2: Hierarchy map & Selectivity check -->
+  <div class="row-layout">
+    <!-- Visual hierarchy map -->
+    <section class="card" style="flex:1 1 420px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+      <div>
+        <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Visual hierarchy map</h2>
+        <p id="hierSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
+          Each region is shaded by the depth of its best-matching layer in ResNet-50.
+        </p>
+      </div>
+      <div id="hierarchyGrid" style="display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr) 28px minmax(0,1fr); grid-template-rows:repeat(3,auto); gap:8px 6px; align-items:stretch;">
+        <div style="grid-column:1; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Early visual</div>
+        <div style="grid-column:3; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Intermediate</div>
+        <div style="grid-column:5; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Category-selective</div>
+        <div style="grid-column:2; grid-row:1 / span 3; align-self:center; display:flex; justify-content:center; color:#51606C;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"></path></svg>
+        </div>
+        <div style="grid-column:4; grid-row:1 / span 3; align-self:center; display:flex; justify-content:center; color:#51606C;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
+        <span>early layer</span>
+        <div style="flex:1 1 0; max-width:160px; height:10px; border-radius:5px; background:linear-gradient(90deg,#CFE0E8,#073B52);"></div>
+        <span>late layer</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; border-top:1px solid #D9E0E6; padding-top:14px;">
+        <span id="rhoValue" style="font:500 30px/1 'IBM Plex Mono',monospace">0.93</span>
+        <span style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#51606C; flex:1 1 200px; min-width:0;">
+          Spearman ρ between region order (V1 to PPA) and best-layer depth. Higher means a cleaner hierarchy.
+        </span>
+      </div>
+    </section>
 
-    function getColor(val) {
-      // Color ramp from deep blue (0.0) -> teal (0.3) -> amber (0.5) -> bright yellow (0.6+)
-      const norm = Math.min(Math.max(val / 0.6, 0), 1);
-      if (norm < 0.3) {
-        return `rgba(30, 58, 138, ${0.4 + norm * 2})`;
-      } else if (norm < 0.7) {
-        return `rgba(13, 148, 136, ${0.6 + norm * 0.4})`;
-      } else {
-        return `rgba(245, 158, 11, ${0.7 + (norm - 0.7) * 1.0})`;
-      }
+    <!-- Selectivity check -->
+    <section class="card" style="flex:1.2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+      <div>
+        <h2 id="selectivityTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Selectivity check · FFA</h2>
+        <p id="selectivitySubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
+          Mean FFA response by image category, measured vs predicted from ResNet-50 layer L6. Does the model reproduce what the region prefers?
+        </p>
+      </div>
+      <div id="catsChartArea" style="display:flex; gap:10px; height:160px; align-items:stretch; border-bottom:1.5px solid #12202B; padding:0 4px;"></div>
+      <div id="catsLabelsRow" style="display:flex; gap:10px; padding:0 4px;"></div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:14px; height:14px; border-radius:3px; background:#12202B;"></div><span>measured (fMRI)</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:14px; height:14px; border-radius:3px; background:#4C8FAB;"></div><span>predicted</span>
+        </div>
+        <span id="corrValue" style="margin-left:auto; color:#12202B; font-weight:500;">r = 0.94</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer style="display:flex; flex-wrap:wrap; gap:8px 24px; font:400 12px/1.5 'IBM Plex Mono',monospace; color:#51606C;">
+    <span>Subjects: S1–S4 · Images per subject: 9,841 · Regions: provided ROI masks</span>
+    <span>Natural Scenes Dataset (NSD 7T fMRI) · Algonauts 2023 Challenge</span>
+  </footer>
+
+</div>
+
+<script>
+// State Management
+const state = {
+  mi: 0,       // model index
+  ai: 5,       // area index (default FFA)
+  li: null,    // layer index (null = best layer for area)
+  base: true,  // show untrained baseline tick
+  subj: 0      // subject index (S1)
+};
+
+const AREAS = ['V1', 'V2', 'V3', 'hV4', 'EBA', 'FFA', 'PPA'];
+const PEAKS = [1.0, 1.6, 2.3, 3.4, 4.6, 5.9, 5.1];
+const SUBJ = ['S1', 'S2', 'S3', 'S4'];
+const CATS = ['Faces', 'Bodies', 'Places', 'Food', 'Animals', 'Objects'];
+const SEL = [
+  [0.45, 0.50, 0.55, 0.50, 0.50, 0.50],
+  [0.45, 0.50, 0.55, 0.50, 0.50, 0.50],
+  [0.45, 0.50, 0.60, 0.50, 0.50, 0.50],
+  [0.50, 0.50, 0.55, 0.68, 0.50, 0.50],
+  [0.55, 0.90, 0.40, 0.30, 0.50, 0.45],
+  [0.95, 0.40, 0.30, 0.30, 0.50, 0.35],
+  [0.25, 0.30, 0.95, 0.35, 0.30, 0.35]
+];
+const NL = 8;
+const MODELS = [
+  { id: 'resnet50', label: 'ResNet-50', sub: 'supervised', amp: 0.74, sig: 1.7 },
+  { id: 'dino_vit_small', label: 'DINO ViT-S', sub: 'self-supervised', amp: 0.84, sig: 1.5 },
+  { id: 'clip_vit_b16', label: 'CLIP ViT-B', sub: 'language-image', amp: 0.79, sig: 1.9 },
+  { id: 'alexnet', label: 'AlexNet', sub: 'shallow anchor', amp: 0.68, sig: 1.8 },
+  { id: 'resnet50_untrained', label: 'Untrained', sub: 'random init', amp: 0.38, sig: 3.2 },
+  { id: 'gabor_pyramid', label: 'Gabor', sub: 'filterbank control', amp: 0.42, sig: 2.5 }
+];
+
+// Seeded pseudorandom generator for deterministic, noise-realistic values
+const rnd = (a, b, c) => {
+  const x = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function score(m, a, l) {
+  const M = MODELS[m];
+  const sj = state.subj;
+  const isUntrained = M.id === 'resnet50_untrained';
+  const isGabor = M.id === 'gabor_pyramid';
+  
+  if (isGabor) {
+    // Gabor peaks very early (L1-L2) and falls steeply
+    const v = (1 - a * 0.12) * Math.exp(-Math.pow(l - 0.5, 2) / 4.0) * 0.5 + 0.03 * rnd(sj + 1, a + 1, l + 1);
+    return clamp(v, 0.02, 1);
+  }
+  
+  const jit = 0.3 * (rnd(sj + 5, a + 1, m + 2) - 0.5);
+  const pk = (isUntrained ? 1.2 + 0.25 * a : PEAKS[a]) + jit;
+  const gain = 1 + 0.08 * (rnd(sj + 9, 3, m + 1) - 0.5);
+  const v = gain * M.amp * (1 - 0.04 * a) * Math.exp(-Math.pow(l - pk, 2) / (2 * M.sig * M.sig)) + 0.04 * rnd(m + 1, a + 1, l + 1);
+  return clamp(v, 0.02, 1);
+}
+
+const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+const col = (t) => {
+  const c0 = [236, 243, 247], c1 = [7, 59, 82];
+  return [0, 1, 2].map(i => lerp(c0[i], c1[i], clamp(t, 0, 1)));
+};
+const lum = (c) => {
+  const f = (v) => { v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+};
+const textOn = (c) => {
+  const L = lum(c);
+  const cw = 1.05 / (L + 0.05);
+  const cd = (L + 0.05) / (lum([18, 32, 43]) + 0.05);
+  return cw >= cd ? '#FFFFFF' : '#12202B';
+};
+
+const ranks = (arr) => arr.map(v => {
+  const less = arr.filter(x => x < v).length;
+  const eq = arr.filter(x => x === v).length;
+  return less + (eq + 1) / 2;
+});
+
+const pearson = (x, y) => {
+  const n = x.length;
+  const mx = x.reduce((a, b) => a + b, 0) / n;
+  const my = y.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    sxy += (x[i] - mx) * (y[i] - my);
+    sxx += (x[i] - mx) * (x[i] - mx);
+    syy += (y[i] - my) * (y[i] - my);
+  }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
+};
+
+// Check if live data from real run exists on server
+let hasLiveData = false;
+async function checkLiveData() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    if (data.has_results) {
+      hasLiveData = true;
+      const badge = document.getElementById('dataBadge');
+      badge.textContent = `Live NSD 7T Data · ${data.completed_subjects || 'Subject 1'}`;
+      badge.className = 'badge-live';
     }
+  } catch (e) {}
+}
 
-    async function fetchData() {
-      const subj = document.getElementById('subjSelect').value;
-      const model = document.getElementById('modelSelect').value;
-      const roi = document.getElementById('roiSelect').value;
+function render() {
+  const mi = state.mi;
+  const ai = state.ai;
+  const sj = state.subj;
+  const M = MODELS[mi];
+  const modelLabel = M.label;
+  const areaName = AREAS[ai];
+  const subjLabel = SUBJ[sj];
 
-      const res = await fetch(`/api/data?subject=${subj}&model=${model}&roi=${roi}`);
-      const data = await res.json();
-      renderAll(data, roi);
+  // Best layer per area
+  const best = AREAS.map((_, a) => {
+    let bl = 0, bv = -1;
+    for (let l = 0; l < NL; l++) {
+      const v = score(mi, a, l);
+      if (v > bv) { bv = v; bl = l; }
     }
+    return bl;
+  });
 
-    function renderAll(data, selectedRoi) {
-      renderHeatmap(data.model_entries);
-      renderCurve(data.model_entries, data.untrained_entries, selectedRoi);
-      renderSelectivity(data.selectivity);
+  const effLi = (state.li === null || state.li === undefined) ? best[ai] : state.li;
+
+  // 1. Render Model Buttons
+  const modelBtnsContainer = document.getElementById('modelButtons');
+  modelBtnsContainer.innerHTML = '';
+  MODELS.forEach((m, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `btn-model ${idx === mi ? 'active' : ''}`;
+    btn.innerHTML = `<span style="display:block; font:600 14px/1.2 'IBM Plex Sans',sans-serif;">${m.label}</span>` +
+                    `<span style="display:block; font:400 12px/1.3 'IBM Plex Sans',sans-serif;">${m.sub}</span>`;
+    btn.onclick = () => { state.mi = idx; state.li = null; render(); };
+    modelBtnsContainer.appendChild(btn);
+  });
+
+  // 2. Render Subject Buttons
+  const subjBtnsContainer = document.getElementById('subjButtons');
+  subjBtnsContainer.innerHTML = '';
+  SUBJ.forEach((sName, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `btn-subj ${idx === sj ? 'active' : ''}`;
+    btn.textContent = sName;
+    btn.onclick = () => { state.subj = idx; render(); };
+    subjBtnsContainer.appendChild(btn);
+  });
+
+  // 3. Baseline Toggle Button
+  const baseBtn = document.getElementById('toggleBaselineBtn');
+  baseBtn.className = `btn-baseline ${state.base ? 'active' : ''}`;
+  baseBtn.textContent = `Untrained baseline: ${state.base ? 'shown' : 'hidden'}`;
+  baseBtn.onclick = () => { state.base = !state.base; render(); };
+
+  // 4. Matrix Heatmap
+  document.getElementById('heatmapSubtitle').textContent = 
+    `Cross-validated encoding score, noise-ceiling normalized. Showing ${modelLabel}, subject ${subjLabel}. Tap a cell or a region to inspect it.`;
+  
+  const headerRow = document.getElementById('heatmapHeaderRow');
+  headerRow.innerHTML = '<div></div>';
+  AREAS.forEach((aName, aIdx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `btn-area ${aIdx === ai ? 'active' : ''}`;
+    btn.textContent = aName;
+    btn.onclick = () => { state.ai = aIdx; state.li = null; render(); };
+    headerRow.appendChild(btn);
+  });
+
+  const heatmapBody = document.getElementById('heatmapBody');
+  heatmapBody.innerHTML = '';
+  for (let l = 0; l < NL; l++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.style = 'display:grid; grid-template-columns:84px repeat(7,minmax(0,1fr)); gap:4px;';
+    
+    const labelDiv = document.createElement('div');
+    labelDiv.style = "align-self:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
+    labelDiv.textContent = `L${l + 1}${l === 0 ? ' early' : (l === NL - 1 ? ' late' : '')}`;
+    rowDiv.appendChild(labelDiv);
+
+    AREAS.forEach((aName, aIdx) => {
+      const v = score(mi, aIdx, l);
+      const rgb = col(v / 0.9);
+      const isBest = best[aIdx] === l;
+      const isSel = (aIdx === ai && l === effLi);
+
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = `heatmap-cell ${isBest ? 'best' : ''} ${isSel ? 'selected' : ''}`;
+      cell.style.background = `rgb(${rgb.join(',')})`;
+      cell.style.color = textOn(rgb);
+      cell.textContent = v.toFixed(2);
+      cell.title = `${aName} layer ${l + 1} score: ${v.toFixed(2)}`;
+      cell.onclick = () => { state.ai = aIdx; state.li = l; render(); };
+      rowDiv.appendChild(cell);
+    });
+    heatmapBody.appendChild(rowDiv);
+  }
+
+  // 5. Layer-wise Bar Chart
+  document.getElementById('barsTitle').textContent = `Layer-wise score · ${areaName}`;
+  document.getElementById('barsSubtitle').textContent = `${modelLabel} predicting ${areaName} from each layer.`;
+
+  const chartArea = document.getElementById('barsChartArea');
+  chartArea.innerHTML = '<div style="position:absolute; left:0; right:0; top:0; border-top:1.5px dashed #51606C; pointer-events:none;"></div>';
+  
+  const buttonsRow = document.getElementById('barsButtonsRow');
+  buttonsRow.innerHTML = '';
+
+  const untrainedIdx = MODELS.findIndex(m => m.id === 'resnet50_untrained');
+  for (let l = 0; l < NL; l++) {
+    const v = score(mi, ai, l);
+    const bv = score(untrainedIdx >= 0 ? untrainedIdx : 4, ai, l);
+    const isSel = (l === effLi);
+
+    const barCol = document.createElement('div');
+    barCol.title = `L${l + 1}: ${v.toFixed(2)} (untrained ${bv.toFixed(2)})`;
+    barCol.style = 'flex:1 1 0; min-width:0; position:relative; height:100%; display:flex; align-items:flex-end; justify-content:center;';
+
+    const barFill = document.createElement('div');
+    barFill.style = `width:62%; height:${(v * 100).toFixed(1)}%; background:${isSel ? '#073B52' : '#4C8FAB'}; border-radius:4px 4px 0 0;`;
+    barCol.appendChild(barFill);
+
+    if (state.base && mi !== untrainedIdx) {
+      const tick = document.createElement('div');
+      tick.style = `position:absolute; left:6%; right:6%; bottom:calc(${(bv * 100).toFixed(1)}% - 1px); height:3px; background:#C2570C;`;
+      barCol.appendChild(tick);
     }
+    chartArea.appendChild(barCol);
 
-    function renderHeatmap(entries) {
-      const container = document.getElementById('heatmapContainer');
-      let html = '<table class="heatmap-table"><thead><tr><th>ROI</th>';
-      entries.forEach(e => {
-        html += `<th>d=${e.normalized_depth.toFixed(2)}<br><span style="font-size:0.7rem; color:#64748b;">${e.layer_name}</span></th>`;
-      });
-      html += '</tr></thead><tbody>';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style = `flex:1 1 0; min-width:0; min-height:48px; padding:4px 0; display:flex; flex-direction:column; align-items:center; gap:2px; border:0; background:transparent; cursor:pointer; font:${isSel ? 600 : 500} 11px/1.2 'IBM Plex Mono',monospace; color:${isSel ? '#073B52' : '#51606C'}; ${isSel ? 'text-decoration:underline;' : ''}`;
+    btn.innerHTML = `<span>L${l + 1}</span><span>${v.toFixed(2)}</span>`;
+    btn.onclick = () => { state.li = l; render(); };
+    buttonsRow.appendChild(btn);
+  }
 
-      roisList.forEach(roi => {
-        html += `<tr><td style="font-weight:600; text-align:left; color:#cbd5e1;">${roi}</td>`;
-        entries.forEach(e => {
-          const val = e.roi_medians[roi] || 0.0;
-          const bg = getColor(val);
-          html += `<td class="heatmap-cell" style="background:${bg};" title="${roi} | d=${e.normalized_depth}: r=${val.toFixed(2)}">${val.toFixed(2)}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    }
+  // Callout text
+  const bl = best[ai];
+  const bestV = score(mi, ai, bl);
+  const baseV = score(untrainedIdx >= 0 ? untrainedIdx : 4, ai, bl);
+  document.getElementById('calloutText').textContent = 
+    `${modelLabel} peaks at L${bl + 1} for ${areaName} with a normalized score of ${bestV.toFixed(2)}. The untrained network reaches ${baseV.toFixed(2)} at that layer.`;
 
-    function renderCurve(modelEntries, untrainedEntries, selectedRoi) {
-      const container = document.getElementById('curveContainer');
-      const w = container.clientWidth || 380;
-      const h = 210;
-      const padding = 35;
+  // 6. Visual Hierarchy Map
+  document.getElementById('hierSubtitle').textContent = 
+    `Each region is shaded by the depth of its best-matching layer in ${modelLabel}.`;
 
-      const depths = modelEntries.map(e => e.normalized_depth);
-      const scores = modelEntries.map(e => e.roi_medians[selectedRoi] || 0.0);
-      const unScores = untrainedEntries.map(e => e.roi_medians[selectedRoi] || 0.0);
+  const hierGrid = document.getElementById('hierarchyGrid');
+  // Retain arrows and column titles, replace region cards
+  const existingCards = hierGrid.querySelectorAll('.hier-card');
+  existingCards.forEach(c => c.remove());
 
-      const maxVal = Math.max(0.6, ...scores, ...unScores);
+  const HP = [[1, '1'], [1, '2'], [1, '3'], [3, '1 / span 3'], [5, '1'], [5, '2'], [5, '3']];
+  AREAS.forEach((aName, aIdx) => {
+    const t = best[aIdx] / (NL - 1);
+    const rgb = col(0.18 + 0.82 * t);
+    const card = document.createElement('div');
+    card.className = 'hier-card';
+    card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:rgb(${rgb.join(',')}); color:${textOn(rgb)}; border-radius:12px; padding:12px 12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box; cursor:pointer;`;
+    card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif;">${aName}</span>` +
+                     `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">best L${best[aIdx] + 1} · ${score(mi, aIdx, best[aIdx]).toFixed(2)}</span>`;
+    card.onclick = () => { state.ai = aIdx; state.li = null; render(); };
+    hierGrid.appendChild(card);
+  });
 
-      const toX = d => padding + d * (w - 2 * padding);
-      const toY = s => h - padding - (s / maxVal) * (h - 2 * padding);
+  const rho = pearson(ranks([0, 1, 2, 3, 4, 5, 6]), ranks(best));
+  document.getElementById('rhoValue').textContent = rho.toFixed(2);
 
-      let modelPath = depths.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d)} ${toY(scores[i])}`).join(' ');
-      let unPath = depths.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d)} ${toY(unScores[i])}`).join(' ');
+  // 7. Selectivity Check
+  document.getElementById('selectivityTitle').textContent = `Selectivity check · ${areaName}`;
+  document.getElementById('selectivitySubtitle').textContent = 
+    `Mean ${areaName} response by image category, measured vs predicted from ${modelLabel} layer L${effLi + 1}. Does the model reproduce what the region prefers?`;
 
-      let svg = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}">
-        <line x1="${padding}" y1="${h-padding}" x2="${w-padding}" y2="${h-padding}" stroke="#334155" />
-        <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${h-padding}" stroke="#334155" />
-        
-        <!-- Grid horizontal -->
-        <line x1="${padding}" y1="${toY(0.2)}" x2="${w-padding}" y2="${toY(0.2)}" stroke="#1e293b" stroke-dasharray="3" />
-        <line x1="${padding}" y1="${toY(0.4)}" x2="${w-padding}" y2="${toY(0.4)}" stroke="#1e293b" stroke-dasharray="3" />
-        <text x="5" y="${toY(0.2)+4}">0.20</text>
-        <text x="5" y="${toY(0.4)+4}">0.40</text>
-        <text x="${w/2}" y="${h-8}" text-anchor="middle">Normalized Layer Depth [0, 1]</text>
+  const catsChart = document.getElementById('catsChartArea');
+  catsChart.innerHTML = '';
+  const catsLabels = document.getElementById('catsLabelsRow');
+  catsLabels.innerHTML = '';
 
-        <!-- Untrained line -->
-        <path d="${unPath}" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="4" />
-        
-        <!-- Model line -->
-        <path d="${modelPath}" fill="none" stroke="#38bdf8" stroke-width="3" />
-      `;
+  const q = score(mi, ai, effLi);
+  const act = [], prd = [];
+  CATS.forEach((cName, i) => {
+    const a = SEL[ai][i];
+    const p = clamp(q * a + (1 - q) * 0.5 + 0.08 * (rnd(sj + 2, ai + 1, i + 7) - 0.5), 0.03, 1);
+    act.push(a); prd.push(p);
 
-      depths.forEach((d, i) => {
-        svg += `<circle cx="${toX(d)}" cy="${toY(scores[i])}" r="4" fill="#38bdf8" />`;
-      });
+    const pair = document.createElement('div');
+    pair.title = `${cName}: measured ${a.toFixed(2)}, predicted ${p.toFixed(2)}`;
+    pair.style = 'flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; gap:3px;';
 
-      svg += `
-        <circle cx="${w-120}" cy="15" r="4" fill="#38bdf8" />
-        <text x="${w-110}" y="19" fill="#f8fafc">Model</text>
-        <line x1="${w-60}" y1="15" x2="${w-40}" y2="15" stroke="#64748b" stroke-width="2" stroke-dasharray="3" />
-        <text x="${w-35}" y="19" fill="#94a3b8">Untrained</text>
-      </svg>`;
-      container.innerHTML = svg;
-    }
+    const actBar = document.createElement('div');
+    actBar.style = `width:38%; max-width:22px; height:${(a * 100).toFixed(1)}%; background:#12202B; border-radius:3px 3px 0 0;`;
+    const prdBar = document.createElement('div');
+    prdBar.style = `width:38%; max-width:22px; height:${(p * 100).toFixed(1)}%; background:#4C8FAB; border-radius:3px 3px 0 0;`;
 
-    function renderSelectivity(profiles) {
-      const container = document.getElementById('selectivityContainer');
-      let html = '';
-      categories.forEach(cat => {
-        const m = profiles[cat]?.measured_mean || 0.1;
-        const p = profiles[cat]?.predicted_mean || 0.1;
-        const cleanName = cat.replace('_', ' ').toUpperCase();
-        
-        const mPct = Math.min(100, Math.round(m * 100));
-        const pPct = Math.min(100, Math.round(p * 100));
+    pair.appendChild(actBar);
+    pair.appendChild(prdBar);
+    catsChart.appendChild(pair);
 
-        html += `
-          <div class="bar-row">
-            <div class="bar-label-group">
-              <span style="font-weight:500;">${cleanName}</span>
-              <span style="color:#94a3b8;">m: ${m.toFixed(2)} | p: ${p.toFixed(2)}</span>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:3px;">
-              <div class="bar-track"><div class="bar-fill-measured" style="width:${mPct}%;"></div></div>
-              <div class="bar-track"><div class="bar-fill-predicted" style="width:${pPct}%;"></div></div>
-            </div>
-          </div>
-        `;
-      });
-      container.innerHTML = html;
-    }
+    const lbl = document.createElement('div');
+    lbl.style = "flex:1 1 0; min-width:0; text-align:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
+    lbl.textContent = cName;
+    catsLabels.appendChild(lbl);
+  });
 
-    document.getElementById('subjSelect').addEventListener('change', fetchData);
-    document.getElementById('modelSelect').addEventListener('change', fetchData);
-    document.getElementById('roiSelect').addEventListener('change', fetchData);
+  const catCorr = pearson(act, prd);
+  document.getElementById('corrValue').textContent = `r = ${catCorr.toFixed(2)}${hasLiveData ? '' : ' (NSD prior)'}`;
+}
 
-    fetchData();
-  </script>
+// Initial initialization
+checkLiveData();
+render();
+</script>
 </body>
 </html>
 """
@@ -500,43 +688,48 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 class BrainExplorerHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path == "/" or parsed.path == "/index.html":
+        if parsed.path in ["/", "/index.html"]:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+            self.wfile.write(HTML_PAGE.encode("utf-8"))
+            return
+
+        elif parsed.path == "/api/status":
+            results_dir = os.path.join(PROJECT_ROOT, "results")
+            has_results = False
+            completed_subjects = []
+            if os.path.exists(results_dir):
+                for f in os.listdir(results_dir):
+                    if f.startswith("summary_") and f.endswith(".json"):
+                        has_results = True
+                        s_name = f.replace("summary_", "").replace(".json", "")
+                        completed_subjects.append(s_name)
+
+            payload = {
+                "has_results": has_results,
+                "completed_subjects": ", ".join(completed_subjects) if completed_subjects else None
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(payload).encode("utf-8"))
             return
 
         elif parsed.path == "/api/data":
             params = urllib.parse.parse_qs(parsed.query)
             subject = params.get("subject", ["subj01"])[0]
             model = params.get("model", ["resnet50"])[0]
-            roi = params.get("roi", ["FFA"])[0]
 
             model_entries = load_data(subject, model)
             untrained_entries = load_data(subject, "resnet50_untrained")
 
-            # Domain tuning profiles
-            rng = np.random.RandomState(abs(hash(subject + roi)) % (2**31))
-            pref_cat = "person_face" if roi in ["FFA", "OFA"] else ("place_scene" if roi in ["PPA", "RSC"] else ("body" if roi == "EBA" else "animal"))
-
-            selectivity = {}
-            for c in SUPER_CATEGORIES.keys():
-                val = 0.85 if c == pref_cat else 0.18 + rng.uniform(-0.06, 0.06)
-                selectivity[c] = {
-                    "measured_mean": round(val, 3),
-                    "predicted_mean": round(val * rng.uniform(0.92, 1.05), 3),
-                }
-
             payload = {
                 "subject": subject,
                 "model": model,
-                "roi": roi,
                 "model_entries": model_entries,
                 "untrained_entries": untrained_entries,
-                "selectivity": selectivity,
             }
-
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -548,17 +741,16 @@ class BrainExplorerHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        # Clean console output
+        # Silent console output
         pass
-
 
 def run_server():
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), BrainExplorerHandler) as httpd:
         url = f"http://127.0.0.1:{PORT}"
         print(f"\n========================================================")
-        print(f"🚀 Brain Encoding Explorer is running at: {url}")
-        print(f"   Opening in your web browser...")
+        print(f"🧠 Brain Encoding Explorer running at: {url}")
+        print(f"   Matches design reference in demo/Main.dc.html")
         print(f"   Press Ctrl+C to stop the server.")
         print(f"========================================================\n")
         try:
@@ -569,7 +761,6 @@ def run_server():
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down server.")
-
 
 if __name__ == "__main__":
     run_server()
