@@ -70,10 +70,20 @@ def extract_model_features(
     n_images = len(image_paths)
     print(f"[{model_key}] Extracting representations for {n_images} images (Subject {subject_id})...")
 
+    # Check if cache is valid and matches current dataset sample count
+    def is_cache_valid(l_name: str) -> bool:
+        if not cache.exists(model_key, l_name, subject_id):
+            return False
+        try:
+            _, meta = cache.load(model_key, l_name, subject_id, mmap_mode="r")
+            return meta.get("shape", [0])[0] == n_images
+        except Exception:
+            return False
+
     # Handle Gabor pyramid baseline
     if model_key == "gabor_pyramid":
-        if cache.exists(model_key, "multiscale_energy", subject_id):
-            print(f"Cache already exists for {model_key} - Subject {subject_id}. Skipping.")
+        if is_cache_valid("multiscale_energy"):
+            print(f"Cache already exists with matched {n_images} samples for {model_key} - Subject {subject_id}. Skipping.")
             return
 
         extractor = GaborPyramidExtractor(device=device)
@@ -98,11 +108,10 @@ def extract_model_features(
     if not model_dict:
         raise ValueError(f"Model {model_key} not defined in {config_path}")
 
-    # Check if all layers are already cached
     layers = model_dict.get("layers", [])
-    needed_layers = [l for l in layers if not cache.exists(model_key, l["name"], subject_id)]
+    needed_layers = [l for l in layers if not is_cache_valid(l["name"])]
     if not needed_layers:
-        print(f"All {len(layers)} layers already cached for {model_key} - {subject_id}. Skipping.")
+        print(f"All {len(layers)} layers already cached with {n_images} samples for {model_key} - {subject_id}. Skipping.")
         return
 
     wrapper = ModelWrapper(model_key, model_dict, device=device)

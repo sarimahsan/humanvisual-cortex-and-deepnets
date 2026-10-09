@@ -175,6 +175,9 @@ class EncodingPipeline:
             if m_key == "gabor_pyramid":
                 try:
                     X_feat, _ = self.cache.load(m_key, "multiscale_energy", self.subject_id)
+                    if X_feat.shape[0] != n_images:
+                        print(f"Features for {m_key} have {X_feat.shape[0]} samples, expected {n_images}! Stale cache. Skipping.")
+                        continue
                 except Exception as e:
                     print(f"Features for {m_key} missing from cache: {e}. Skipping.")
                     continue
@@ -191,6 +194,9 @@ class EncodingPipeline:
                 l_name = l_info["name"]
                 try:
                     X_feat, _ = self.cache.load(m_key, l_name, self.subject_id)
+                    if X_feat.shape[0] != n_images:
+                        print(f"Features for {m_key} - {l_name} have {X_feat.shape[0]} samples, expected {n_images}! Stale cache. Skipping.")
+                        continue
                 except Exception as e:
                     print(f"Features for {m_key} - {l_name} missing from cache: {e}. Skipping.")
                     continue
