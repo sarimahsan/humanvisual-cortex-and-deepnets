@@ -1,0 +1,210 @@
+# Model specifications and layer taps for Brain Encoding Analysis
+# Each model defines 8 layer taps, normalized from 0.0 (stem/early) to 1.0 (final/deep).
+
+models:
+  alexnet:
+    name: "AlexNet"
+    type: "cnn"
+    source: "torchvision"
+    model_name: "alexnet"
+    weights: "DEFAULT"
+    pooling:
+      type: "adaptive_avg_pool2d"
+      output_size: [4, 4]
+    layers:
+      - name: "features.1"
+        normalized_depth: 0.125
+        desc: "ReLU 1 (Early Gabor-like)"
+      - name: "features.4"
+        normalized_depth: 0.250
+        desc: "ReLU 2 (Intermediate edges)"
+      - name: "features.7"
+        normalized_depth: 0.375
+        desc: "ReLU 3 (Textures)"
+      - name: "features.9"
+        normalized_depth: 0.500
+        desc: "ReLU 4 (Complex textures)"
+      - name: "features.11"
+        normalized_depth: 0.625
+        desc: "ReLU 5 (Part assemblies)"
+      - name: "classifier.1"
+        normalized_depth: 0.750
+        desc: "FC 6 (Latent features)"
+      - name: "classifier.4"
+        normalized_depth: 0.875
+        desc: "FC 7 (High-level semantics)"
+      - name: "classifier.6"
+        normalized_depth: 1.000
+        desc: "FC 8 (ImageNet logits)"
+
+  resnet50:
+    name: "ResNet-50 (Supervised)"
+    type: "cnn"
+    source: "torchvision"
+    model_name: "resnet50"
+    weights: "DEFAULT"
+    pooling:
+      type: "adaptive_avg_pool2d"
+      output_size: [2, 2]
+    layers:
+      - name: "relu"
+        normalized_depth: 0.125
+        desc: "Stem Conv1 + ReLU"
+      - name: "layer1.0"
+        normalized_depth: 0.250
+        desc: "Stage 1 Sub-block 1"
+      - name: "layer1.2"
+        normalized_depth: 0.375
+        desc: "Stage 1 End"
+      - name: "layer2.1"
+        normalized_depth: 0.500
+        desc: "Stage 2 Mid"
+      - name: "layer2.3"
+        normalized_depth: 0.625
+        desc: "Stage 2 End"
+      - name: "layer3.2"
+        normalized_depth: 0.750
+        desc: "Stage 3 Mid"
+      - name: "layer3.5"
+        normalized_depth: 0.875
+        desc: "Stage 3 End"
+      - name: "layer4.2"
+        normalized_depth: 1.000
+        desc: "Stage 4 End (Penultimate)"
+
+  resnet50_untrained:
+    name: "ResNet-50 (Untrained Control)"
+    type: "cnn"
+    source: "torchvision"
+    model_name: "resnet50"
+    weights: null  # Random initialization
+    pooling:
+      type: "adaptive_avg_pool2d"
+      output_size: [2, 2]
+    layers:
+      - name: "relu"
+        normalized_depth: 0.125
+        desc: "Stem Conv1 + ReLU"
+      - name: "layer1.0"
+        normalized_depth: 0.250
+        desc: "Stage 1 Sub-block 1"
+      - name: "layer1.2"
+        normalized_depth: 0.375
+        desc: "Stage 1 End"
+      - name: "layer2.1"
+        normalized_depth: 0.500
+        desc: "Stage 2 Mid"
+      - name: "layer2.3"
+        normalized_depth: 0.625
+        desc: "Stage 2 End"
+      - name: "layer3.2"
+        normalized_depth: 0.750
+        desc: "Stage 3 Mid"
+      - name: "layer3.5"
+        normalized_depth: 0.875
+        desc: "Stage 3 End"
+      - name: "layer4.2"
+        normalized_depth: 1.000
+        desc: "Stage 4 End (Penultimate)"
+
+  deit_small:
+    name: "DeiT-S / ViT-S/16 (Supervised)"
+    type: "vit"
+    source: "timm"
+    model_name: "deit_small_patch16_224"
+    pretrained: true
+    pooling:
+      type: "cls_plus_pooled_patches"
+      patch_grid: [2, 2]
+    layers:
+      - name: "patch_embed"
+        normalized_depth: 0.083
+        desc: "Patch Projection"
+      - name: "blocks.1"
+        normalized_depth: 0.250
+        desc: "Transformer Block 2"
+      - name: "blocks.3"
+        normalized_depth: 0.417
+        desc: "Transformer Block 4"
+      - name: "blocks.5"
+        normalized_depth: 0.583
+        desc: "Transformer Block 6"
+      - name: "blocks.7"
+        normalized_depth: 0.750
+        desc: "Transformer Block 8"
+      - name: "blocks.9"
+        normalized_depth: 0.833
+        desc: "Transformer Block 10"
+      - name: "blocks.11"
+        normalized_depth: 1.000
+        desc: "Transformer Block 12 (Final)"
+
+  dino_vit_small:
+    name: "DINO ViT-S/16 (Self-Supervised)"
+    type: "vit"
+    source: "timm"
+    model_name: "vit_small_patch16_224.dino"
+    pretrained: true
+    pooling:
+      type: "cls_plus_pooled_patches"
+      patch_grid: [2, 2]
+    layers:
+      - name: "patch_embed"
+        normalized_depth: 0.083
+        desc: "Patch Projection"
+      - name: "blocks.1"
+        normalized_depth: 0.250
+        desc: "Transformer Block 2"
+      - name: "blocks.3"
+        normalized_depth: 0.417
+        desc: "Transformer Block 4"
+      - name: "blocks.5"
+        normalized_depth: 0.583
+        desc: "Transformer Block 6"
+      - name: "blocks.7"
+        normalized_depth: 0.750
+        desc: "Transformer Block 8"
+      - name: "blocks.9"
+        normalized_depth: 0.833
+        desc: "Transformer Block 10"
+      - name: "blocks.11"
+        normalized_depth: 1.000
+        desc: "Transformer Block 12 (Final)"
+
+  clip_vit_b16:
+    name: "CLIP ViT-B/16 (Language-Image)"
+    type: "clip"
+    source: "open_clip"
+    model_name: "ViT-B-16"
+    pretrained: "openai"
+    pooling:
+      type: "cls_plus_pooled_patches"
+      patch_grid: [2, 2]
+    layers:
+      - name: "conv1"
+        normalized_depth: 0.083
+        desc: "Patch Conv Stem"
+      - name: "transformer.resblocks.1"
+        normalized_depth: 0.250
+        desc: "ResBlock 2"
+      - name: "transformer.resblocks.3"
+        normalized_depth: 0.417
+        desc: "ResBlock 4"
+      - name: "transformer.resblocks.5"
+        normalized_depth: 0.583
+        desc: "ResBlock 6"
+      - name: "transformer.resblocks.7"
+        normalized_depth: 0.750
+        desc: "ResBlock 8"
+      - name: "transformer.resblocks.9"
+        normalized_depth: 0.833
+        desc: "ResBlock 10"
+      - name: "transformer.resblocks.11"
+        normalized_depth: 1.000
+        desc: "ResBlock 12 (Penultimate Layer)"
+
+controls:
+  gabor_pyramid:
+    name: "Gabor Wavelet & Color Baseline"
+    type: "low_level"
+    desc: "Multi-scale Gabor filter bank (4 scales, 8 orientations) + LAB color + spatial frequency energy"

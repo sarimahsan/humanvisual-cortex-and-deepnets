@@ -1,0 +1,47 @@
+# Global experiment and hyperparameter configuration
+
+experiment:
+  title: "Brain Encoding: Layer-to-Cortex Alignment"
+  seed: 42
+
+data:
+  raw_dir: "data/raw/algonauts_2023"
+  processed_dir: "data/processed"
+  coco_annotations: "data/coco/annotations"
+  subjects:
+    - "subj01"
+    - "subj02"
+    - "subj03"
+    - "subj04"
+  test_split_ratio: 0.15
+  image_size: [224, 224]
+
+features:
+  cache_dir: "features/cache"
+  dtype: "float16"
+  batch_size: 64
+  pca_components: 1024
+  whiten: false
+
+encoding:
+  method: "ridge"
+  solver: "svd_kernel"  # Fast exact kernel/SVD Ridge regression for N ~ 8000
+  cv_folds: 5
+  alpha_grid:
+    - 0.1
+    - 1.0
+    - 10.0
+    - 100.0
+    - 1000.0
+    - 10000.0
+    - 100000.0
+    - 1000000.0
+  vertex_chunk_size: 2048  # Keeps GPU and RAM footprint well below 4 GB
+  device: "cuda"           # Falls back to CPU if CUDA is unavailable
+
+analysis:
+  bootstrap_iterations: 1000
+  confidence_interval: 0.95
+  shuffled_null_runs: 5
+  results_dir: "results"
+  figures_dir: "figures"
