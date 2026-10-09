@@ -385,8 +385,6 @@ const SEL = [
 const NL = 8;
 const MODELS = [
   { id: 'resnet50', label: 'ResNet-50', sub: 'supervised', amp: 0.74, sig: 1.7 },
-  { id: 'dino_vit_small', label: 'DINO ViT-S', sub: 'self-supervised', amp: 0.84, sig: 1.5 },
-  { id: 'clip_vit_b16', label: 'CLIP ViT-B', sub: 'language-image', amp: 0.79, sig: 1.9 },
   { id: 'alexnet', label: 'AlexNet', sub: 'shallow anchor', amp: 0.68, sig: 1.8 },
   { id: 'resnet50_untrained', label: 'Untrained', sub: 'random init', amp: 0.38, sig: 3.2 },
   { id: 'gabor_pyramid', label: 'Gabor', sub: 'filterbank control', amp: 0.42, sig: 2.5 }
