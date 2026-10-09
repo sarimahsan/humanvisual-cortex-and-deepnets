@@ -1,0 +1,72 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# C caches & environments
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Data directories (do not commit raw neuroimaging/stimuli datasets)
+data/raw/
+data/processed/
+data/coco/
+!data/raw/.gitkeep
+
+# Feature caches (large binary arrays)
+features/cache/*.npy
+features/cache/*.npz
+features/cache/*.json
+!features/cache/.gitkeep
+
+# Results binary arrays (keep summary JSON, ignore large vertex arrays)
+results/*.npz
+results/*.npy
+results/vertex_correlations_*.npz
+
+# Generated figures (optional: ignore temp figures, or allow committed final figures)
+figures/test_figures/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# IDE & Editor artifacts
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Local logs
+*.log

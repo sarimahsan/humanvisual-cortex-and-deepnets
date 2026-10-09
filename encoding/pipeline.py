@@ -15,6 +15,7 @@ import argparse
 import os
 import json
 import yaml
+import numpy as np
 try:
     from tqdm import tqdm
 except ImportError:
