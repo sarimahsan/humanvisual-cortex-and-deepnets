@@ -173,10 +173,12 @@ class EncodingPipeline:
             print(f"==========================================")
 
             if m_key == "gabor_pyramid":
-                if not self.cache.exists(m_key, "multiscale_energy", self.subject_id):
-                    print(f"Features for {m_key} missing from cache. Run extractor first! Skipping.")
+                try:
+                    X_feat, _ = self.cache.load(m_key, "multiscale_energy", self.subject_id)
+                except Exception as e:
+                    print(f"Features for {m_key} missing from cache: {e}. Skipping.")
                     continue
-                X_feat, _ = self.cache.load(m_key, "multiscale_energy", self.subject_id)
+
                 res = self.run_layer_encoding(
                     m_key, "multiscale_energy", X_feat, Y_all, split_mgr, roi_mgr, run_shuffled_null=True
                 )
@@ -187,11 +189,12 @@ class EncodingPipeline:
             m_cfg = self.models_cfg["models"][m_key]
             for l_info in m_cfg["layers"]:
                 l_name = l_info["name"]
-                if not self.cache.exists(m_key, l_name, self.subject_id):
-                    print(f"Features for {m_key} - {l_name} missing from cache. Run extractor first!")
+                try:
+                    X_feat, _ = self.cache.load(m_key, l_name, self.subject_id)
+                except Exception as e:
+                    print(f"Features for {m_key} - {l_name} missing from cache: {e}. Skipping.")
                     continue
 
-                X_feat, _ = self.cache.load(m_key, l_name, self.subject_id)
                 res = self.run_layer_encoding(
                     m_key, l_name, X_feat, Y_all, split_mgr, roi_mgr
                 )
