@@ -749,7 +749,7 @@ def run_server():
     with socketserver.TCPServer(("", PORT), BrainExplorerHandler) as httpd:
         url = f"http://127.0.0.1:{PORT}"
         print(f"\n========================================================")
-        print(f"🧠 Brain Encoding Explorer running at: {url}")
+        print(f"[*] Brain Encoding Explorer running at: {url}")
         print(f"   Matches design reference in demo/Main.dc.html")
         print(f"   Press Ctrl+C to stop the server.")
         print(f"========================================================\n")
