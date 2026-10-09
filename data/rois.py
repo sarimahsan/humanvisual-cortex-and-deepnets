@@ -108,11 +108,13 @@ class ROIManager:
             lh = lh_roi_masks.get(roi)
             rh = rh_roi_masks.get(roi)
             if lh is not None and rh is not None:
-                mask = np.concatenate([lh.astype(bool), rh.astype(bool)])
+                lh_arr = np.asarray(lh, dtype=bool)
+                rh_arr = np.asarray(rh, dtype=bool)
+                mask = np.concatenate([lh_arr, rh_arr])
             elif lh is not None:
-                mask = lh.astype(bool)
+                mask = np.asarray(lh, dtype=bool)
             else:
-                mask = rh.astype(bool)
+                mask = np.asarray(rh, dtype=bool)
             combined[roi] = mask
 
         return cls(combined)

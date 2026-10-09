@@ -86,70 +86,69 @@ class AlgonautsDataset:
         if not os.path.exists(self.roi_dir):
             return ROIManager({})
 
-        roi_files = glob.glob(os.path.join(self.roi_dir, "*.npy"))
-
-        # 1. Parse individual mask files (e.g. lh.V1.npy, lh.FFA.npy)
-        for rf in roi_files:
-            fname = os.path.basename(rf)
-            name_parts = fname.replace(".npy", "").split(".")
-            if len(name_parts) >= 2:
-                hemi = name_parts[0]
-                roi_name = ".".join(name_parts[1:])
-                # Clean up sub-divisions (e.g. V1v, V1d -> V1)
-                simplified_name = roi_name
-                for base_roi in ["V1", "V2", "V3"]:
-                    if roi_name.startswith(base_roi):
-                        simplified_name = base_roi
-                        break
-
+        for hemi, n_v, target_dict in [("lh", n_lh_vertices, lh_masks), ("rh", n_rh_vertices, rh_masks)]:
+            # 1. PRF visual ROIs (V1, V2, V3, hV4)
+            prf_path = os.path.join(self.roi_dir, f"{hemi}.prf-visualrois.npy")
+            if os.path.exists(prf_path):
                 try:
-                    mask_data = np.load(rf, allow_pickle=True).astype(bool)
+                    arr = np.load(prf_path, allow_pickle=True)
+                    if isinstance(arr, np.ndarray) and arr.size == n_v:
+                        target_dict["V1"] = (arr == 1) | (arr == 2)
+                        target_dict["V2"] = (arr == 3) | (arr == 4)
+                        target_dict["V3"] = (arr == 5) | (arr == 6)
+                        target_dict["hV4"] = (arr == 7)
                 except Exception:
+                    pass
+
+            # 2. FLOC Faces (OFA, FFA)
+            faces_path = os.path.join(self.roi_dir, f"{hemi}.floc-faces.npy")
+            if os.path.exists(faces_path):
+                try:
+                    arr = np.load(faces_path, allow_pickle=True)
+                    if isinstance(arr, np.ndarray) and arr.size == n_v:
+                        target_dict["OFA"] = (arr == 1)
+                        target_dict["FFA"] = (arr == 2) | (arr == 3)
+                except Exception:
+                    pass
+
+            # 3. FLOC Bodies (EBA, FBA)
+            bodies_path = os.path.join(self.roi_dir, f"{hemi}.floc-bodies.npy")
+            if os.path.exists(bodies_path):
+                try:
+                    arr = np.load(bodies_path, allow_pickle=True)
+                    if isinstance(arr, np.ndarray) and arr.size == n_v:
+                        target_dict["EBA"] = (arr == 1)
+                except Exception:
+                    pass
+
+            # 4. FLOC Places (OPA, PPA, RSC)
+            places_path = os.path.join(self.roi_dir, f"{hemi}.floc-places.npy")
+            if os.path.exists(places_path):
+                try:
+                    arr = np.load(places_path, allow_pickle=True)
+                    if isinstance(arr, np.ndarray) and arr.size == n_v:
+                        target_dict["OPA"] = (arr == 1)
+                        target_dict["PPA"] = (arr == 2)
+                        target_dict["RSC"] = (arr == 3)
+                except Exception:
+                    pass
+
+            # 5. Check individual boolean ROI mask files (e.g. lh.V1.npy, lh.FFA.npy)
+            for r_name in ["V1", "V2", "V3", "hV4", "OFA", "FFA", "OPA", "PPA", "EBA", "RSC"]:
+                if r_name in target_dict:
                     continue
-                target_dict = lh_masks if hemi.lower().startswith("lh") else rh_masks
-                if simplified_name in target_dict:
-                    target_dict[simplified_name] = target_dict[simplified_name] | mask_data
-                else:
-                    target_dict[simplified_name] = mask_data
-
-        # 2. Check for challenge floc / prf mapping files if masks are empty
-        mapping_files = [f for f in roi_files if "mapping_" in os.path.basename(f)]
-        for mf in mapping_files:
-            fname = os.path.basename(mf)
-            hemi = "lh" if "lh." in fname or fname.startswith("lh_") else "rh"
-            n_v = n_lh_vertices if hemi == "lh" else n_rh_vertices
-            try:
-                map_arr = np.load(mf, allow_pickle=True)
-                if getattr(map_arr, "dtype", None) == object and hasattr(map_arr, "item"):
-                    try:
-                        map_arr = map_arr.item()
-                    except Exception:
-                        pass
-            except Exception:
-                continue
-
-            # Check challenge integer mappings
-            # PRF visual ROIs: 1: V1v, 2: V1d, 3: V2v, 4: V2d, 5: V3v, 6: V3d, 7: hV4
-            if "prf-visualrois" in fname:
-                target = lh_masks if hemi == "lh" else rh_masks
-                target["V1"] = (map_arr == 1) | (map_arr == 2)
-                target["V2"] = (map_arr == 3) | (map_arr == 4)
-                target["V3"] = (map_arr == 5) | (map_arr == 6)
-                target["hV4"] = (map_arr == 7)
-            # floc-faces: 1: OFA, 2: FFA-1, 3: FFA-2
-            elif "floc-faces" in fname:
-                target = lh_masks if hemi == "lh" else rh_masks
-                target["OFA"] = (map_arr == 1)
-                target["FFA"] = (map_arr == 2) | (map_arr == 3)
-            # floc-bodies: 1: EBA, 2: FBA-1, 3: FBA-2
-            elif "floc-bodies" in fname:
-                target = lh_masks if hemi == "lh" else rh_masks
-                target["EBA"] = (map_arr == 1)
-            # floc-places: 1: OPA, 2: PPA, 3: RSC
-            elif "floc-places" in fname:
-                target = lh_masks if hemi == "lh" else rh_masks
-                target["OPA"] = (map_arr == 1)
-                target["PPA"] = (map_arr == 2)
-                target["RSC"] = (map_arr == 3)
+                cand_files = [
+                    os.path.join(self.roi_dir, f"{hemi}.{r_name}.npy"),
+                    os.path.join(self.roi_dir, f"{hemi}_{r_name}.npy"),
+                ]
+                for cf in cand_files:
+                    if os.path.exists(cf):
+                        try:
+                            m_arr = np.load(cf, allow_pickle=True)
+                            if isinstance(m_arr, np.ndarray) and m_arr.size == n_v:
+                                target_dict[r_name] = m_arr.astype(bool)
+                                break
+                        except Exception:
+                            pass
 
         return ROIManager.from_algonauts_masks(lh_masks, rh_masks)
