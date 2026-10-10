@@ -6,7 +6,7 @@ and ROI masks for Subjects 1-8. Supports memory-mapped reading and
 deterministic held-out splitting.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 import glob
 import os
 import numpy as np
