@@ -23,10 +23,10 @@ const MODELS = [
 ];
 
 const HIERARCHY_METRICS = {
-  alexnet: { rho: 0.9363, p: 0.0001, com_rho: 0.8924 },
-  clip_vit_b16: { rho: 0.9166, p: 0.0010, com_rho: 0.8247 },
-  deit_small: { rho: 0.8521, p: 0.0027, com_rho: 0.8062 },
-  resnet50: { rho: 0.8660, p: 0.0092, com_rho: 0.7385 },
+  alexnet: { rho: 0.9363, p: 0.0001, com_rho: 0.9847 },
+  clip_vit_b16: { rho: 0.9166, p: 0.0010, com_rho: 0.7939 },
+  deit_small: { rho: 0.8521, p: 0.0027, com_rho: 0.7939 },
+  resnet50: { rho: 0.8660, p: 0.0092, com_rho: 0.7632 },
   resnet50_untrained: { rho: -0.7290, p: 0.0168, com_rho: -0.8432 },
   gabor_pyramid: { rho: null, p: null, com_rho: null }
 };
