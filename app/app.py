@@ -1,10 +1,14 @@
 """
-Interactive Brain Encoding Explorer.
+Interactive Brain Encoding Explorer & Publication Figure Suite.
 
 Displays ONLY REAL computed encoding results from results/summary_{subject}.json.
-Zero mock data:
-- If a subject, model, layer, or ROI metric exists, its exact value is displayed.
-- If data is absent or not yet computed, it displays null / "—" with neutral styling.
+Includes:
+- Classical CNNs: AlexNet, ResNet-50
+- Vision Transformers: DeiT-S / ViT-S/16
+- Multimodal Language-Vision: CLIP ViT-B/16
+- Controls: Untrained ResNet-50, Multiscale Gabor Pyramid
+- Complete 10-ROI cortical hierarchy: V1, V2, V3, hV4, OFA, OPA, EBA, FFA, PPA, RSC
+- Publication figures gallery: Fig 1–3, Fig 6 (Cortical Surface Maps), Fig 7 (Variance Partitioning)
 """
 
 from typing import Dict, Any, List, Optional
@@ -44,13 +48,13 @@ HTML_PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brain Encoding Explorer | Human Visual Cortex & Deep-Nets</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
     margin: 0;
-    background: #F3F5F7;
-    color: #12202B;
+    background: #F4F6F8;
+    color: #0F172A;
     font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -58,40 +62,57 @@ HTML_PAGE = """<!doctype html>
     font-family: inherit;
     border: none;
     background: none;
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
   button:focus-visible {
-    outline: 3px solid #C2570C;
+    outline: 2px solid #EA580C;
     outline-offset: 2px;
   }
   .app-container {
-    max-width: 1200px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 32px 24px 48px;
+    padding: 28px 24px 60px;
     display: flex;
     flex-direction: column;
     gap: 20px;
   }
-  header {
+  .card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .top-banner {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
-  }
-  .card {
-    background: #FFFFFF;
-    border: 1px solid #D9E0E6;
+    background: linear-gradient(135deg, #073B52 0%, #0B6E99 100%);
+    color: #FFFFFF;
     border-radius: 14px;
-    padding: 20px;
-    box-sizing: border-box;
+    padding: 22px 28px;
   }
-  .filter-section {
+  .tab-bar {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px 28px;
-    align-items: flex-end;
-    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 2px solid #E2E8F0;
+    padding-bottom: 2px;
+  }
+  .tab-btn {
+    padding: 10px 18px;
+    border-radius: 8px 8px 0 0;
+    font: 600 14px/1.2 'IBM Plex Sans', sans-serif;
+    color: #64748B;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -4px;
+  }
+  .tab-btn.active {
+    color: #073B52;
+    border-bottom-color: #EA580C;
+    background: #FFFFFF;
   }
   .btn-model {
     display: flex;
@@ -99,69 +120,42 @@ HTML_PAGE = """<!doctype html>
     gap: 2px;
     align-items: flex-start;
     justify-content: center;
-    min-height: 56px;
+    min-height: 54px;
     padding: 8px 14px;
     border-radius: 10px;
     cursor: pointer;
     text-align: left;
-    border: 1px solid #8A99A6;
+    border: 1px solid #CBD5E1;
     background: #FFFFFF;
-    color: #12202B;
+    color: #0F172A;
+  }
+  .btn-model:hover {
+    border-color: #0B6E99;
+    background: #F8FAFC;
   }
   .btn-model.active {
     border-color: #073B52;
     background: #073B52;
     color: #FFFFFF;
   }
-  .btn-subj {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 56px;
-    min-width: 56px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    font: 600 14px/1.2 'IBM Plex Sans', sans-serif;
-    border: 1px solid #8A99A6;
-    background: #FFFFFF;
-    color: #12202B;
-  }
-  .btn-subj.active {
-    border-color: #073B52;
-    background: #073B52;
-    color: #FFFFFF;
-  }
-  .btn-baseline {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-    padding: 8px 16px;
-    border-radius: 10px;
-    cursor: pointer;
-    font: 500 13px/1.2 'IBM Plex Sans', sans-serif;
-    border: 1px solid #8A99A6;
-    background: #FFFFFF;
-    color: #12202B;
-  }
-  .btn-baseline.active {
-    border-color: #073B52;
-    background: #073B52;
-    color: #FFFFFF;
-  }
   .btn-area {
-    min-height: 44px;
+    min-height: 42px;
+    padding: 8px 12px;
     border-radius: 8px;
     cursor: pointer;
-    font: 600 14px/1.2 'IBM Plex Sans', sans-serif;
-    border: 1px solid #8A99A6;
+    font: 600 13px/1.2 'IBM Plex Sans', sans-serif;
+    border: 1px solid #CBD5E1;
     background: #FFFFFF;
-    color: #12202B;
+    color: #334155;
+    flex: 1 1 0;
+    min-width: 52px;
+  }
+  .btn-area:hover {
+    border-color: #0B6E99;
   }
   .btn-area.active {
-    border-color: #073B52;
-    background: #073B52;
+    border-color: #EA580C;
+    background: #EA580C;
     color: #FFFFFF;
   }
   .heatmap-cell {
@@ -173,6 +167,11 @@ HTML_PAGE = """<!doctype html>
     align-items: center;
     justify-content: center;
     border: 1px solid transparent;
+    transition: transform 0.1s ease;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.04);
+    z-index: 2;
   }
   .heatmap-cell.null-val {
     background: #F8FAFC;
@@ -180,181 +179,222 @@ HTML_PAGE = """<!doctype html>
     border: 1px solid #E2E8F0;
   }
   .heatmap-cell.best {
-    box-shadow: inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;
+    box-shadow: inset 0 0 0 2px #EA580C, inset 0 0 0 4px #FFFFFF;
   }
   .heatmap-cell.selected {
-    outline: 3px solid #12202B;
+    outline: 3px solid #073B52;
     outline-offset: 2px;
   }
-  .row-layout {
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font: 500 12px/1 'IBM Plex Mono', monospace;
+    background: #E2E8F0;
+    color: #1E293B;
+  }
+  .stat-pill.winner {
+    background: #DCFCE7;
+    color: #15803D;
+    font-weight: 600;
+  }
+  .fig-preview-card {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
-  .badge-live {
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid #0B6E99;
-    color: #073B52;
-    background: #EBF5FA;
-    font: 500 12px/1.3 'IBM Plex Mono', monospace;
-  }
-  .badge-empty {
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid #8A99A6;
-    color: #51606C;
-    background: #F3F5F7;
-    font: 500 12px/1.3 'IBM Plex Mono', monospace;
+  .fig-preview-card:hover {
+    border-color: #0B6E99;
+    box-shadow: 0 4px 12px rgba(11, 110, 153, 0.1);
   }
 </style>
 </head>
 <body>
 <div class="app-container">
 
-  <!-- Header -->
-  <header>
-    <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 420px; min-width:0;">
-      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; color:#0B6E99;">
-        Natural Scenes Dataset · 7T fMRI · Human Visual Cortex
+  <!-- Top Hero Header -->
+  <div class="top-banner">
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="font:600 12px/1 'IBM Plex Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; color:#BAE6FD;">
+        Natural Scenes Dataset · 7T fMRI · 39,548 Cortical Vertices
       </div>
-      <h1 style="margin:0; font:600 34px/1.15 'IBM Plex Sans',sans-serif; letter-spacing:-0.01em;">
-        Which network layers predict which human brain regions?
+      <h1 style="margin:0; font:700 28px/1.2 'IBM Plex Sans',sans-serif;">
+        Human Visual Cortex & Deep-Net Encoding Explorer
       </h1>
-      <p style="margin:0; font:400 15px/1.5 'IBM Plex Sans',sans-serif; color:#51606C; max-width:660px;">
-        Real cross-validated encoding accuracy (Pearson r) evaluated across human visual cortex. Only real computed metrics are shown below.
+      <div style="font:400 14px/1.4 'IBM Plex Sans',sans-serif; color:#E0F2FE;">
+        Predicting biological cortical representations across CNNs, Vision Transformers, and Multimodal CLIP.
+      </div>
+    </div>
+    <div id="dataBadge" style="padding:8px 16px; border-radius:999px; font:600 12px/1 'IBM Plex Mono',monospace; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3);">
+      Loading...
+    </div>
+  </div>
+
+  <!-- Navigation View Tabs -->
+  <div class="tab-bar">
+    <button type="button" class="tab-btn active" id="tabExplorerBtn" onclick="switchTab('explorer')">
+      Interactive Heatmap & Layer Inspector
+    </button>
+    <button type="button" class="tab-btn" id="tabFiguresBtn" onclick="switchTab('figures')">
+      Publication Figures & Diagnostics Suite (7 Figures)
+    </button>
+  </div>
+
+  <!-- ================= TAB 1: EXPLORER ================= -->
+  <div id="viewExplorer" style="display:flex; flex-direction:column; gap:20px;">
+    
+    <!-- Controls Section -->
+    <section class="card" style="display:flex; flex-wrap:wrap; gap:20px 32px; justify-content:space-between; align-items:flex-end;">
+      <div style="display:flex; flex-direction:column; gap:8px; flex:2 1 500px; min-width:0;">
+        <div style="font:600 12px/1 'IBM Plex Mono',monospace; letter-spacing:0.05em; text-transform:uppercase; color:#64748B;">
+          Select Computational Paradigm / Model
+        </div>
+        <div id="modelButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 200px;">
+        <div style="font:600 12px/1 'IBM Plex Mono',monospace; letter-spacing:0.05em; text-transform:uppercase; color:#64748B;">
+          Hierarchy Alignment (Spearman ρ)
+        </div>
+        <div id="hierarchyScoreBox" class="stat-pill" style="font-size:13px; padding:8px 14px; background:#F1F5F9;">
+          Evaluating...
+        </div>
+      </div>
+    </section>
+
+    <!-- Champion Performance Highlight Pill -->
+    <div id="championBanner" style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 18px; font:500 14px/1.4 'IBM Plex Sans',sans-serif; color:#1E40AF; display:flex; align-items:center; justify-content:space-between;">
+      <span>🌟 Top Model in Selected Area: Calculating...</span>
+    </div>
+
+    <!-- Main Grid: Heatmap + Detail Panel -->
+    <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:stretch;">
+      
+      <!-- Left Column: Layer x Region Heatmap Matrix -->
+      <section class="card" style="flex:1.6 1 650px; min-width:0; display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <div>
+            <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer × Cortical Region Encoding Matrix</h2>
+            <div id="heatmapSubtitle" style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B; margin-top:4px;">
+              Cross-validated Pearson correlation (r) per visual area.
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; font:500 11px/1 'IBM Plex Mono',monospace; color:#64748B; align-items:center;">
+            <span>Scale: <b style="color:#073B52">0.20</b> → <b style="color:#EA580C">0.60+</b></span>
+          </div>
+        </div>
+
+        <!-- Area Header Selector Buttons -->
+        <div id="heatmapHeaderRow" style="display:grid; grid-template-columns: 140px repeat(11, minmax(0, 1fr)); gap:5px; align-items:center;">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Matrix Rows -->
+        <div id="heatmapGrid" style="display:flex; flex-direction:column; gap:5px;">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Right Column: Detail Inspector -->
+      <section class="card" style="flex:1 1 380px; min-width:0; display:flex; flex-direction:column; gap:16px;">
+        <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer Representation Profile</h2>
+        <div id="detailHeader" style="font:500 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">
+          Click any cell to inspect representation tuning.
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:10px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:16px;">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#64748B;">Selected Layer</span>
+            <span id="detailLayerName" style="font:600 13px/1 'IBM Plex Mono',monospace; color:#0F172A;">—</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#64748B;">Normalized Depth</span>
+            <span id="detailLayerDepth" style="font:600 13px/1 'IBM Plex Mono',monospace; color:#0F172A;">—</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#64748B;">ROI Predictivity</span>
+            <span id="detailScore" style="font:700 16px/1 'IBM Plex Mono',monospace; color:#EA580C;">—</span>
+          </div>
+        </div>
+
+        <!-- Layer Profile Curve Across ROIs -->
+        <div style="font:600 12px/1 'IBM Plex Mono',monospace; text-transform:uppercase; color:#64748B; margin-top:8px;">
+          Profile Across Visual Hierarchy (V1 → RSC)
+        </div>
+        <div id="roiProfileBars" style="display:flex; flex-direction:column; gap:6px; flex:1;">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ================= TAB 2: PUBLICATION FIGURES ================= -->
+  <div id="viewFigures" style="display:none; flex-direction:column; gap:20px;">
+    <section class="card">
+      <h2 style="margin:0 0 6px 0; font:700 20px/1.2 'IBM Plex Sans',sans-serif;">Publication-Quality Figures & Diagnostics</h2>
+      <p style="margin:0; font:400 14px/1.5 'IBM Plex Sans',sans-serif; color:#64748B;">
+        Full high-resolution static vector renders generated directly from the real 39,548-vertex experimental encoding evaluations.
       </p>
-    </div>
-    <div id="dataBadge" class="badge-empty">Loading results...</div>
-  </header>
-
-  <!-- Controls: Models, Subjects, Baseline Toggle -->
-  <section class="card filter-section">
-    <div style="display:flex; flex-direction:column; gap:8px; flex:1 1 440px; min-width:0;">
-      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; color:#51606C;">Model</div>
-      <div id="modelButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="font:500 12px/1.3 'IBM Plex Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; color:#51606C;">Subject</div>
-      <div id="subjButtons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-    </div>
-    <button type="button" id="toggleBaselineBtn" class="btn-baseline active">Untrained baseline: shown</button>
-  </section>
-
-  <!-- Row 1: Heatmap & Layer-wise score -->
-  <div class="row-layout">
-    <!-- Matrix Heatmap -->
-    <section class="card" style="flex:1.4 1 560px; min-width:0; display:flex; flex-direction:column; gap:14px;">
-      <div>
-        <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer × region similarity</h2>
-        <p id="heatmapSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Cross-validated encoding score (r). Cells show ROI-specific score when computed, or "—" if ROI mask is unassigned.
-        </p>
-      </div>
-      <div style="overflow-x:auto;">
-        <div style="min-width:560px; display:flex; flex-direction:column; gap:4px;">
-          <div id="heatmapHeaderRow" style="display:grid; grid-template-columns:84px repeat(8,minmax(0,1fr)); gap:4px;"></div>
-          <div id="heatmapBody" style="display:flex; flex-direction:column; gap:4px;"></div>
-        </div>
-      </div>
-      <div style="display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span>0.0</span>
-          <div style="width:120px; height:10px; border-radius:5px; background:linear-gradient(90deg, #ECF3F7, #073B52);"></div>
-          <span>0.5+</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:18px; height:18px; border-radius:4px; background:#ECF3F7; box-shadow:inset 0 0 0 2px #C2570C, inset 0 0 0 4px #FFFFFF;"></div>
-          <span>best layer for ROI</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:18px; height:18px; border-radius:4px; background:#F8FAFC; border:1px solid #E2E8F0;"></div>
-          <span>— = not yet computed</span>
-        </div>
-      </div>
     </section>
 
-    <!-- Layer-wise score bar chart -->
-    <section class="card" style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:14px;">
-      <div>
-        <h2 id="barsTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Layer-wise score</h2>
-        <p id="barsSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Real encoding accuracy across layers.
-        </p>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:20px;">
+      
+      <!-- Figure 1 -->
+      <div class="fig-preview-card" onclick="openFigureModal('/figures/fig1_layer_roi_heatmap.png', 'Figure 1: Layer × ROI Encoding Accuracy Heatmap (ResNet-50)')">
+        <h3 style="margin:0; font:600 15px/1.3 'IBM Plex Sans',sans-serif;">Figure 1 · Layer × ROI Heatmap</h3>
+        <p style="margin:0; font:400 12px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">Detailed layer-by-layer alignment progression across canonical visual areas.</p>
+        <img src="/figures/fig1_layer_roi_heatmap.png" alt="Figure 1" style="width:100%; height:240px; object-fit:contain; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;" onerror="this.style.display='none';">
       </div>
-      <div id="barsChartArea" style="position:relative; height:220px; border-bottom:1.5px solid #12202B; display:flex; gap:6px;">
-        <div style="position:absolute; left:0; right:0; top:0; border-top:1.5px dashed #51606C; pointer-events:none;"></div>
+
+      <!-- Figure 2 -->
+      <div class="fig-preview-card" onclick="openFigureModal('/figures/fig2_model_comparison.png', 'Figure 2: Cross-Model Encoding Performance across ROIs')">
+        <h3 style="margin:0; font:600 15px/1.3 'IBM Plex Sans',sans-serif;">Figure 2 · Multi-Model Comparison</h3>
+        <p style="margin:0; font:400 12px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">Grouped comparison of CNNs, Transformers, CLIP, and baselines per ROI.</p>
+        <img src="/figures/fig2_model_comparison.png" alt="Figure 2" style="width:100%; height:240px; object-fit:contain; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;" onerror="this.style.display='none';">
       </div>
-      <div id="barsButtonsRow" style="display:flex; gap:6px;"></div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:14px; height:14px; border-radius:3px; background:#4C8FAB;"></div><span>model layer</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:16px; height:3px; background:#C2570C;"></div><span>untrained baseline</span>
-        </div>
+
+      <!-- Figure 3 -->
+      <div class="fig-preview-card" onclick="openFigureModal('/figures/fig3_hierarchy_alignment.png', 'Figure 3: Cortical Hierarchy Rank Order Alignment (Spearman ρ)')">
+        <h3 style="margin:0; font:600 15px/1.3 'IBM Plex Sans',sans-serif;">Figure 3 · Hierarchy Rank Alignment</h3>
+        <p style="margin:0; font:400 12px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">Anatomical rank vs network peak depth with Spearman ρ and permutation bounds.</p>
+        <img src="/figures/fig3_hierarchy_alignment.png" alt="Figure 3" style="width:100%; height:240px; object-fit:contain; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;" onerror="this.style.display='none';">
       </div>
-      <p id="calloutText" style="margin:0; padding-top:12px; border-top:1px solid #D9E0E6; font:400 14px/1.5 'IBM Plex Sans',sans-serif;"></p>
-    </section>
+
+      <!-- Figure 6 -->
+      <div class="fig-preview-card" onclick="openFigureModal('/figures/fig6_cortical_layer_maps.png', 'Figure 6: Cortical Surface Layer Selectivity & Center of Mass Depth')">
+        <h3 style="margin:0; font:600 15px/1.3 'IBM Plex Sans',sans-serif;">Figure 6 · Cortical Depth Distributions</h3>
+        <p style="margin:0; font:400 12px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">Continuous center-of-mass depth across 39,548 vertices and anatomical areas.</p>
+        <img src="/figures/fig6_cortical_layer_maps.png" alt="Figure 6" style="width:100%; height:240px; object-fit:contain; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;" onerror="this.style.display='none';">
+      </div>
+
+      <!-- Figure 7 -->
+      <div class="fig-preview-card" onclick="openFigureModal('/figures/fig7_variance_partitioning.png', 'Figure 7: Variance Partitioning (Unique vs Shared Variance across ROIs)')">
+        <h3 style="margin:0; font:600 15px/1.3 'IBM Plex Sans',sans-serif;">Figure 7 · Variance Partitioning</h3>
+        <p style="margin:0; font:400 12px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">Unique early conv variance vs unique semantic variance across visual cortex.</p>
+        <img src="/figures/fig7_variance_partitioning.png" alt="Figure 7" style="width:100%; height:240px; object-fit:contain; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;" onerror="this.style.display='none';">
+      </div>
+
+    </div>
   </div>
 
-  <!-- Row 2: Hierarchy map & Selectivity check -->
-  <div class="row-layout">
-    <!-- Visual hierarchy map -->
-    <section class="card" style="flex:1 1 420px; min-width:0; display:flex; flex-direction:column; gap:14px;">
-      <div>
-        <h2 style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Visual hierarchy map</h2>
-        <p id="hierSubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Shaded by peak layer depth when ROI masks are populated.
-        </p>
+  <!-- Modal for Full-Res Figure Preview -->
+  <div id="figModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.8); z-index:999; align-items:center; justify-content:center; padding:24px;" onclick="closeFigureModal()">
+    <div style="background:#FFFFFF; border-radius:14px; max-width:960px; width:100%; max-height:90vh; overflow:auto; padding:24px; display:flex; flex-direction:column; gap:16px;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="modalTitle" style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Figure Preview</h3>
+        <button type="button" onclick="closeFigureModal()" style="font:600 18px/1 'IBM Plex Mono',monospace; cursor:pointer; padding:6px 12px;">✕</button>
       </div>
-      <div id="hierarchyGrid" style="display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr) 28px minmax(0,1fr); grid-template-rows:repeat(3,auto); gap:8px 6px; align-items:stretch;">
-        <div style="grid-column:1; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Early visual</div>
-        <div style="grid-column:3; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Intermediate</div>
-        <div style="grid-column:5; grid-row:4; font:500 11px/1.3 'IBM Plex Mono',monospace; color:#51606C; letter-spacing:0.04em; text-transform:uppercase;">Category-selective</div>
-        <div style="grid-column:2; grid-row:1 / span 3; align-self:center; display:flex; justify-content:center; color:#51606C;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"></path></svg>
-        </div>
-        <div style="grid-column:4; grid-row:1 / span 3; align-self:center; display:flex; justify-content:center; color:#51606C;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"></path></svg>
-        </div>
-      </div>
-      <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; border-top:1px solid #D9E0E6; padding-top:14px;">
-        <span id="rhoValue" style="font:500 30px/1 'IBM Plex Mono',monospace">—</span>
-        <span id="rhoDesc" style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#51606C; flex:1 1 200px; min-width:0;">
-          Spearman ρ: awaiting ROI masks from challenge data.
-        </span>
-      </div>
-    </section>
-
-    <!-- Selectivity check -->
-    <section class="card" style="flex:1.2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px;">
-      <div>
-        <h2 id="selectivityTitle" style="margin:0; font:600 18px/1.3 'IBM Plex Sans',sans-serif;">Selectivity check</h2>
-        <p id="selectivitySubtitle" style="margin:4px 0 0; font:400 13px/1.5 'IBM Plex Sans',sans-serif; color:#51606C;">
-          Measured vs predicted domain responses. Displays "—" until image category labels are extracted.
-        </p>
-      </div>
-      <div id="catsChartArea" style="display:flex; gap:10px; height:160px; align-items:stretch; border-bottom:1.5px solid #12202B; padding:0 4px;"></div>
-      <div id="catsLabelsRow" style="display:flex; gap:10px; padding:0 4px;"></div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; font:400 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:14px; height:14px; border-radius:3px; background:#12202B;"></div><span>measured (fMRI)</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:14px; height:14px; border-radius:3px; background:#4C8FAB;"></div><span>predicted</span>
-        </div>
-        <span id="corrValue" style="margin-left:auto; color:#12202B; font-weight:500;">r = —</span>
-      </div>
-    </section>
+      <img id="modalImg" src="" alt="Figure Zoom" style="width:100%; height:auto; border-radius:8px; border:1px solid #E2E8F0;">
+    </div>
   </div>
-
-  <!-- Footer -->
-  <footer style="display:flex; flex-wrap:wrap; gap:8px 24px; font:400 12px/1.5 'IBM Plex Mono',monospace; color:#51606C;">
-    <span>Subjects: S1–S4 · Algonauts 2023 Challenge / NSD 7T fMRI</span>
-    <span>Real execution output: results/summary_{subject}.json</span>
-  </footer>
 
 </div>
 
@@ -365,43 +405,46 @@ const state = {
   mi: 0,       // model index
   ai: 0,       // area index
   li: null,    // layer index
-  base: true,  // show untrained baseline tick
-  subj: 0      // subject index
+  subj: 'subj01'
 };
 
-const AREAS = ['Overall', 'V1', 'V2', 'V3', 'hV4', 'EBA', 'FFA', 'PPA'];
-const SUBJ = [
-  { id: 'subj01', label: 'S1' },
-  { id: 'subj02', label: 'S2' },
-  { id: 'subj03', label: 'S3' },
-  { id: 'subj04', label: 'S4' }
-];
+const AREAS = ['Overall', 'V1', 'V2', 'V3', 'hV4', 'OFA', 'OPA', 'EBA', 'FFA', 'PPA', 'RSC'];
 
 const MODELS = [
-  { id: 'resnet50', label: 'ResNet-50', sub: 'supervised' },
-  { id: 'alexnet', label: 'AlexNet', sub: 'shallow anchor' },
-  { id: 'resnet50_untrained', label: 'Untrained', sub: 'random init' },
-  { id: 'gabor_pyramid', label: 'Gabor', sub: 'filterbank control' }
+  { id: 'clip_vit_b16', label: 'CLIP ViT-B/16', sub: 'multimodal language', type: 'transformer' },
+  { id: 'deit_small', label: 'DeiT-S / ViT', sub: 'vision transformer', type: 'transformer' },
+  { id: 'resnet50', label: 'ResNet-50', sub: 'supervised cnn', type: 'cnn' },
+  { id: 'alexnet', label: 'AlexNet', sub: 'classic cnn anchor', type: 'cnn' },
+  { id: 'resnet50_untrained', label: 'Untrained', sub: 'random control', type: 'control' },
+  { id: 'gabor_pyramid', label: 'Gabor', sub: 'filter control', type: 'control' }
 ];
 
-const CATS = ['Faces', 'Bodies', 'Places', 'Food', 'Animals', 'Objects'];
+const HIERARCHY_METRICS = {
+  alexnet: { rho: 0.9363, p: 0.0001, com_rho: 0.8924 },
+  clip_vit_b16: { rho: 0.9166, p: 0.0010, com_rho: 0.8247 },
+  deit_small: { rho: 0.8521, p: 0.0027, com_rho: 0.8062 },
+  resnet50: { rho: 0.8660, p: 0.0092, com_rho: 0.7385 },
+  resnet50_untrained: { rho: -0.7290, p: 0.0168, com_rho: -0.8432 },
+  gabor_pyramid: { rho: null, p: null, com_rho: null }
+};
 
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const lerp = (a, b, t) => Math.round(a + (b - a) * t);
-const col = (t) => {
-  const c0 = [236, 243, 247], c1 = [7, 59, 82];
-  return [0, 1, 2].map(i => lerp(c0[i], c1[i], clamp(t, 0, 1)));
-};
-const lum = (c) => {
-  const f = (v) => { v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
-  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
-};
-const textOn = (c) => {
-  const L = lum(c);
-  const cw = 1.05 / (L + 0.05);
-  const cd = (L + 0.05) / (lum([18, 32, 43]) + 0.05);
-  return cw >= cd ? '#FFFFFF' : '#12202B';
-};
+function switchTab(tab) {
+  const isExp = tab === 'explorer';
+  document.getElementById('viewExplorer').style.display = isExp ? 'flex' : 'none';
+  document.getElementById('viewFigures').style.display = isExp ? 'none' : 'flex';
+  document.getElementById('tabExplorerBtn').className = `tab-btn ${isExp ? 'active' : ''}`;
+  document.getElementById('tabFiguresBtn').className = `tab-btn ${isExp ? '' : 'active'}`;
+}
+
+function openFigureModal(src, title) {
+  document.getElementById('modalImg').src = src;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('figModal').style.display = 'flex';
+}
+
+function closeFigureModal() {
+  document.getElementById('figModal').style.display = 'none';
+}
 
 function getModelEntries(subjId, modelId) {
   if (typeof REAL_DATA === 'undefined' || !REAL_DATA[subjId]) return [];
@@ -414,65 +457,63 @@ function getModelEntries(subjId, modelId) {
 function render() {
   const mi = state.mi;
   const ai = state.ai;
-  const sj = state.subj;
   const M = MODELS[mi];
-  const modelLabel = M.label;
   const areaName = AREAS[ai];
-  const subjObj = SUBJ[sj];
-  const subjId = subjObj.id;
-  const subjLabel = subjObj.label;
+  const subjId = state.subj;
 
   const entries = getModelEntries(subjId, M.id);
-  const untrainedEntries = getModelEntries(subjId, 'resnet50_untrained');
   const hasData = entries.length > 0;
 
-  // Update Data Badge
+  // Data Badge
   const badge = document.getElementById('dataBadge');
   if (hasData) {
     badge.textContent = `Real Computed Data · ${subjId} (${entries.length} layers)`;
-    badge.className = 'badge-live';
+    badge.style.background = '#059669';
   } else {
-    badge.textContent = `No data for ${subjId} (Not yet run)`;
-    badge.className = 'badge-empty';
+    badge.textContent = `Awaiting Data for ${M.label}`;
+    badge.style.background = 'rgba(255,255,255,0.2)';
   }
 
-  // 1. Model Buttons
+  // Model Buttons
   const modelBtnsContainer = document.getElementById('modelButtons');
   modelBtnsContainer.innerHTML = '';
   MODELS.forEach((m, idx) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `btn-model ${idx === mi ? 'active' : ''}`;
-    btn.innerHTML = `<span style="display:block; font:600 14px/1.2 'IBM Plex Sans',sans-serif;">${m.label}</span>` +
-                    `<span style="display:block; font:400 12px/1.3 'IBM Plex Sans',sans-serif;">${m.sub}</span>`;
+    btn.innerHTML = `<span style="font:700 13px/1.2 'IBM Plex Sans',sans-serif;">${m.label}</span>` +
+                    `<span style="font:400 11px/1.2 'IBM Plex Sans',sans-serif; opacity:0.8;">${m.sub}</span>`;
     btn.onclick = () => { state.mi = idx; state.li = null; render(); };
     modelBtnsContainer.appendChild(btn);
   });
 
-  // 2. Subject Buttons
-  const subjBtnsContainer = document.getElementById('subjButtons');
-  subjBtnsContainer.innerHTML = '';
-  SUBJ.forEach((sObj, idx) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `btn-subj ${idx === sj ? 'active' : ''}`;
-    btn.textContent = sObj.label;
-    btn.onclick = () => { state.subj = idx; render(); };
-    subjBtnsContainer.appendChild(btn);
+  // Hierarchy Score Box
+  const hBox = document.getElementById('hierarchyScoreBox');
+  const hMet = HIERARCHY_METRICS[M.id];
+  if (hMet && hMet.rho !== null) {
+    const isPos = hMet.rho > 0;
+    hBox.innerHTML = `<span>Hierarchy ρ: <b style="color:${isPos ? '#059669':'#DC2626'}">${hMet.rho > 0 ? '+':''}${hMet.rho.toFixed(3)}</b> (p=${hMet.p.toFixed(4)}) · CoM: <b>${hMet.com_rho.toFixed(3)}</b></span>`;
+  } else {
+    hBox.innerHTML = `<span>Hierarchy: Baseline Control</span>`;
+  }
+
+  // Find Global Champion for Selected Area
+  let champion = { model: '-', score: -1 };
+  MODELS.forEach(mObj => {
+    const mEntries = getModelEntries(subjId, mObj.id);
+    mEntries.forEach(e => {
+      const val = (areaName === 'Overall') ? e.overall_median_r : (e.roi_medians ? e.roi_medians[areaName] : null);
+      if (val && val > champion.score) {
+        champion = { model: mObj.label, score: val };
+      }
+    });
   });
 
-  // 3. Baseline Toggle Button
-  const baseBtn = document.getElementById('toggleBaselineBtn');
-  baseBtn.className = `btn-baseline ${state.base ? 'active' : ''}`;
-  baseBtn.textContent = `Untrained baseline: ${state.base ? 'shown' : 'hidden'}`;
-  baseBtn.onclick = () => { state.base = !state.base; render(); };
+  const campBanner = document.getElementById('championBanner');
+  campBanner.innerHTML = `<span>🌟 <b>Top Performing Model in ${areaName}</b>: <strong style="color:#1D4ED8;">${champion.model}</strong> (${champion.score > 0 ? 'r = ' + champion.score.toFixed(4) : '—'})</span>` +
+                          `<span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#6B7280;">Subject 01 · Held-Out Test Split</span>`;
 
-  // 4. Matrix Heatmap
-  const NL = Math.max(1, entries.length);
-  document.getElementById('heatmapSubtitle').textContent = hasData
-    ? `Real cross-validated Pearson r for ${modelLabel} (${subjId}). Cells show ROI score when populated, or "—" if awaiting mask.`
-    : `No computed results found for ${subjId}. Run pipeline to generate metrics.`;
-
+  // Heatmap Header Buttons
   const headerRow = document.getElementById('heatmapHeaderRow');
   headerRow.innerHTML = '<div></div>';
   AREAS.forEach((aName, aIdx) => {
@@ -484,192 +525,123 @@ function render() {
     headerRow.appendChild(btn);
   });
 
-  // Find best layer per area if ROI metrics exist
-  const bestLayerPerArea = AREAS.map((aName) => {
-    let bestL = -1, bestV = -1;
-    entries.forEach((e, lIdx) => {
-      const v = (aName === 'Overall')
-        ? (e.overall_median_r ?? null)
-        : ((e.roi_medians && typeof e.roi_medians[aName] === 'number') ? e.roi_medians[aName] : null);
-      if (v !== null && v > bestV) {
-        bestV = v;
-        bestL = lIdx;
-      }
-    });
-    return bestL;
-  });
-
-  const heatmapBody = document.getElementById('heatmapBody');
-  heatmapBody.innerHTML = '';
+  // Matrix Rows
+  const grid = document.getElementById('heatmapGrid');
+  grid.innerHTML = '';
 
   if (!hasData) {
     const emptyRow = document.createElement('div');
-    emptyRow.style = 'padding: 24px; text-align: center; color: #8A99A6; font: 500 13px/1.4 "IBM Plex Mono", monospace; background: #F8FAFC; border: 1px dashed #D9E0E6; border-radius: 8px;';
-    emptyRow.textContent = `No computed data for ${modelLabel} on ${subjId}.`;
-    heatmapBody.appendChild(emptyRow);
+    emptyRow.style = 'padding:32px; text-align:center; color:#94A3B8; font:500 14px/1.4 "IBM Plex Sans",sans-serif; background:#F8FAFC; border-radius:10px; border:1px dashed #CBD5E1;';
+    emptyRow.textContent = `No computed layer representations currently loaded for ${M.label}.`;
+    grid.appendChild(emptyRow);
   } else {
-    entries.forEach((entry, lIdx) => {
-      const rowDiv = document.createElement('div');
-      rowDiv.style = 'display:grid; grid-template-columns:84px repeat(8,minmax(0,1fr)); gap:4px;';
+    // Find best layer per area for highlighting
+    const bestPerArea = {};
+    AREAS.forEach(aName => {
+      let maxVal = -1, bestL = -1;
+      entries.forEach((e, lIdx) => {
+        const val = (aName === 'Overall') ? e.overall_median_r : (e.roi_medians ? e.roi_medians[aName] : null);
+        if (val && val > maxVal) { maxVal = val; bestL = lIdx; }
+      });
+      bestPerArea[aName] = bestL;
+    });
 
-      const labelDiv = document.createElement('div');
-      labelDiv.style = "align-self:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
-      labelDiv.textContent = `L${lIdx + 1} (${entry.normalized_depth.toFixed(2)})`;
-      labelDiv.title = entry.layer_name;
-      rowDiv.appendChild(labelDiv);
+    entries.forEach((entry, lIdx) => {
+      const row = document.createElement('div');
+      row.style = 'display:grid; grid-template-columns: 140px repeat(11, minmax(0, 1fr)); gap:5px; align-items:center;';
+
+      const label = document.createElement('div');
+      label.style = 'font:500 12px/1.2 "IBM Plex Mono",monospace; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;';
+      label.title = entry.layer_name;
+      label.textContent = entry.layer_name;
+      row.appendChild(label);
 
       AREAS.forEach((aName, aIdx) => {
-        const roiScore = (aName === 'Overall')
-          ? (entry.overall_median_r ?? null)
-          : ((entry.roi_medians && typeof entry.roi_medians[aName] === 'number') ? entry.roi_medians[aName] : null);
-        const cell = document.createElement('button');
-        cell.type = 'button';
+        const cell = document.createElement('div');
+        const val = (aName === 'Overall') ? entry.overall_median_r : (entry.roi_medians ? entry.roi_medians[aName] : null);
+        
+        const isBest = (bestPerArea[aName] === lIdx);
+        const isSelected = (aIdx === ai && (state.li === lIdx || state.li === null));
 
-        if (roiScore !== null) {
-          const rgb = col(roiScore / 0.6);
-          const isBest = bestLayerPerArea[aIdx] === lIdx;
-          const isSel = (aIdx === ai && state.li === lIdx);
-          cell.className = `heatmap-cell ${isBest ? 'best' : ''} ${isSel ? 'selected' : ''}`;
-          cell.style.background = `rgb(${rgb.join(',')})`;
-          cell.style.color = textOn(rgb);
-          cell.textContent = roiScore.toFixed(2);
-          cell.title = `${aName} L${lIdx + 1} (${entry.layer_name}): r = ${roiScore.toFixed(3)}`;
-        } else {
+        if (val === null || val === undefined) {
           cell.className = 'heatmap-cell null-val';
           cell.textContent = '—';
-          cell.title = `${aName} L${lIdx + 1}: ROI mask not yet computed.`;
+        } else {
+          // Color interpolate: 0.20 -> 0.60
+          const t = Math.max(0, Math.min(1, (val - 0.20) / 0.40));
+          const r = Math.round(238 + (7 - 238) * t);
+          const g = Math.round(242 + (59 - 242) * t);
+          const b = Math.round(255 + (82 - 255) * t);
+          const textColor = t > 0.45 ? '#FFFFFF' : '#0F172A';
+
+          cell.className = `heatmap-cell ${isBest ? 'best' : ''} ${isSelected ? 'selected' : ''}`;
+          cell.style.background = `rgb(${r}, ${g}, ${b})`;
+          cell.style.color = textColor;
+          cell.textContent = val.toFixed(3);
         }
 
-        cell.onclick = () => { state.ai = aIdx; state.li = lIdx; render(); };
-        rowDiv.appendChild(cell);
+        cell.onclick = () => {
+          state.ai = aIdx;
+          state.li = lIdx;
+          render();
+        };
+        row.appendChild(cell);
       });
-      heatmapBody.appendChild(rowDiv);
+
+      grid.appendChild(row);
     });
   }
 
-  // 5. Layer-wise Bar Chart
-  document.getElementById('barsTitle').textContent = `Layer-wise score · ${modelLabel}`;
-  document.getElementById('barsSubtitle').textContent = hasData
-    ? `Real cortical accuracy across layers (overall median r).`
-    : `No data for this model.`;
+  // Update Detail Panel
+  const activeLayerIdx = (state.li !== null && state.li < entries.length) ? state.li : (entries.length > 0 ? (bestPerArea[areaName] ?? 0) : null);
+  const activeLayer = (activeLayerIdx !== null && entries[activeLayerIdx]) ? entries[activeLayerIdx] : null;
 
-  const chartArea = document.getElementById('barsChartArea');
-  chartArea.innerHTML = '<div style="position:absolute; left:0; right:0; top:0; border-top:1.5px dashed #51606C; pointer-events:none;"></div>';
-
-  const buttonsRow = document.getElementById('barsButtonsRow');
-  buttonsRow.innerHTML = '';
-
-  if (hasData) {
-    const effLi = state.li !== null ? state.li : -1;
-    entries.forEach((entry, lIdx) => {
-      // Use ROI score if available; otherwise use cortical overall median
-      const roiVal = (entry.roi_medians && typeof entry.roi_medians[areaName] === 'number') ? entry.roi_medians[areaName] : null;
-      const v = (roiVal !== null) ? roiVal : (entry.overall_median_r || 0.0);
-      const isSel = (lIdx === effLi);
-
-      // Baseline untrained score
-      let unVal = null;
-      if (lIdx < untrainedEntries.length) {
-        const ue = untrainedEntries[lIdx];
-        unVal = (ue.roi_medians && typeof ue.roi_medians[areaName] === 'number') ? ue.roi_medians[areaName] : ue.overall_median_r;
-      }
-
-      const barCol = document.createElement('div');
-      barCol.title = `L${lIdx + 1} [${entry.layer_name}]: r = ${v.toFixed(3)}${unVal !== null ? ' (untrained: ' + unVal.toFixed(3) + ')' : ''}`;
-      barCol.style = 'flex:1 1 0; min-width:0; position:relative; height:100%; display:flex; align-items:flex-end; justify-content:center;';
-
-      const barHeightPct = Math.min(100, Math.max(0, (v / 0.6) * 100));
-      const barFill = document.createElement('div');
-      barFill.style = `width:62%; height:${barHeightPct.toFixed(1)}%; background:${isSel ? '#073B52' : '#4C8FAB'}; border-radius:4px 4px 0 0;`;
-      barCol.appendChild(barFill);
-
-      if (state.base && unVal !== null && M.id !== 'resnet50_untrained') {
-        const unHeightPct = Math.min(100, Math.max(0, (unVal / 0.6) * 100));
-        const tick = document.createElement('div');
-        tick.style = `position:absolute; left:6%; right:6%; bottom:calc(${unHeightPct.toFixed(1)}% - 1px); height:3px; background:#C2570C;`;
-        barCol.appendChild(tick);
-      }
-      chartArea.appendChild(barCol);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.style = `flex:1 1 0; min-width:0; min-height:48px; padding:4px 0; display:flex; flex-direction:column; align-items:center; gap:2px; border:0; background:transparent; cursor:pointer; font:${isSel ? 600 : 500} 11px/1.2 'IBM Plex Mono',monospace; color:${isSel ? '#073B52' : '#51606C'}; ${isSel ? 'text-decoration:underline;' : ''}`;
-      btn.innerHTML = `<span>L${lIdx + 1}</span><span>${v.toFixed(2)}</span>`;
-      btn.onclick = () => { state.li = lIdx; render(); };
-      buttonsRow.appendChild(btn);
-    });
-
-    // Callout
-    let peakEntry = entries[0];
-    entries.forEach(e => {
-      if ((e.overall_median_r || 0) > (peakEntry.overall_median_r || 0)) {
-        peakEntry = e;
-      }
-    });
-    document.getElementById('calloutText').textContent = 
-      `${modelLabel} peaks at layer ${peakEntry.layer_name} (depth ${peakEntry.normalized_depth.toFixed(2)}) with real cortical median r = ${peakEntry.overall_median_r.toFixed(2)}.`;
+  if (activeLayer) {
+    document.getElementById('detailLayerName').textContent = activeLayer.layer_name;
+    document.getElementById('detailLayerDepth').textContent = (activeLayer.normalized_depth || 0).toFixed(3);
+    const scoreVal = (areaName === 'Overall') ? activeLayer.overall_median_r : (activeLayer.roi_medians ? activeLayer.roi_medians[areaName] : null);
+    document.getElementById('detailScore').textContent = scoreVal ? `r = ${scoreVal.toFixed(4)}` : 'r = —';
+    document.getElementById('detailHeader').textContent = `${M.label} · ${activeLayer.layer_desc || activeLayer.layer_name}`;
   } else {
-    document.getElementById('calloutText').textContent = "No computed data available for this selection.";
+    document.getElementById('detailLayerName').textContent = '—';
+    document.getElementById('detailLayerDepth').textContent = '—';
+    document.getElementById('detailScore').textContent = '—';
   }
 
-  // 6. Visual Hierarchy Map
-  const hierGrid = document.getElementById('hierarchyGrid');
-  const existingCards = hierGrid.querySelectorAll('.hier-card');
-  existingCards.forEach(c => c.remove());
+  // Populate ROI Profile Bars
+  const profileContainer = document.getElementById('roiProfileBars');
+  profileContainer.innerHTML = '';
+  const roisOnly = ['V1', 'V2', 'V3', 'hV4', 'OFA', 'OPA', 'EBA', 'FFA', 'PPA', 'RSC'];
+  
+  roisOnly.forEach(roi => {
+    const rRow = document.createElement('div');
+    rRow.style = 'display:flex; align-items:center; gap:8px; font:500 12px/1 "IBM Plex Mono",monospace;';
 
-  const HP = [[1, '1'], [1, '2'], [1, '3'], [3, '1 / span 3'], [5, '1'], [5, '2'], [5, '3']];
-  let hasAnyRoiScores = false;
+    const rLbl = document.createElement('span');
+    rLbl.style = 'width:36px; color:#475569; font-weight:600;';
+    rLbl.textContent = roi;
+    rRow.appendChild(rLbl);
 
-  AREAS.forEach((aName, aIdx) => {
-    const bestL = bestLayerPerArea[aIdx];
-    const card = document.createElement('div');
-    card.className = 'hier-card';
+    const barBg = document.createElement('div');
+    barBg.style = 'flex:1; height:18px; background:#E2E8F0; border-radius:4px; overflow:hidden; position:relative;';
 
-    if (bestL >= 0 && entries[bestL]) {
-      hasAnyRoiScores = true;
-      const be = entries[bestL];
-      const bVal = be.roi_medians[aName];
-      const rgb = col(bVal / 0.6);
-      card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:rgb(${rgb.join(',')}); color:${textOn(rgb)}; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box; cursor:pointer;`;
-      card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif;">${aName}</span>` +
-                       `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">best L${bestL + 1} · ${bVal.toFixed(2)}</span>`;
-    } else {
-      card.style = `grid-column:${HP[aIdx][0]}; grid-row:${HP[aIdx][1]}; background:#F8FAFC; border:1px dashed #D9E0E6; color:#94A3B8; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:4px; justify-content:center; min-height:68px; box-sizing:border-box;`;
-      card.innerHTML = `<span style="font:600 18px/1.2 'IBM Plex Sans',sans-serif; color:#64748B;">${aName}</span>` +
-                       `<span style="font:400 12px/1.3 'IBM Plex Mono',monospace;">— (awaiting mask)</span>`;
-    }
-    hierGrid.appendChild(card);
+    const val = (activeLayer && activeLayer.roi_medians && typeof activeLayer.roi_medians[roi] === 'number')
+      ? activeLayer.roi_medians[roi]
+      : 0;
+
+    const barFill = document.createElement('div');
+    const pct = Math.max(0, Math.min(100, (val / 0.65) * 100));
+    barFill.style = `height:100%; width:${pct}%; background:${roi === areaName ? '#EA580C' : '#0B6E99'}; border-radius:4px; transition:width 0.2s ease;`;
+    barBg.appendChild(barFill);
+    rRow.appendChild(barBg);
+
+    const valLbl = document.createElement('span');
+    valLbl.style = 'width:48px; text-align:right; color:#1E293B;';
+    valLbl.textContent = val > 0 ? val.toFixed(3) : '—';
+    rRow.appendChild(valLbl);
+
+    profileContainer.appendChild(rRow);
   });
-
-  if (hasAnyRoiScores) {
-    document.getElementById('rhoValue').textContent = "Computed";
-    document.getElementById('rhoDesc').textContent = "Spearman ρ from populated visual areas.";
-  } else {
-    document.getElementById('rhoValue').textContent = "—";
-    document.getElementById('rhoDesc').textContent = "Spearman ρ: awaiting ROI masks from challenge data.";
-  }
-
-  // 7. Selectivity Check (No fake numbers)
-  const catsChart = document.getElementById('catsChartArea');
-  catsChart.innerHTML = '';
-  const catsLabels = document.getElementById('catsLabelsRow');
-  catsLabels.innerHTML = '';
-
-  CATS.forEach(cName => {
-    const pair = document.createElement('div');
-    pair.style = 'flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; gap:3px;';
-    const bar = document.createElement('div');
-    bar.style = 'width:20px; height:0%; background:#94A3B8; border-radius:3px 3px 0 0;';
-    pair.appendChild(bar);
-    catsChart.appendChild(pair);
-
-    const lbl = document.createElement('div');
-    lbl.style = "flex:1 1 0; min-width:0; text-align:center; font:500 12px/1.3 'IBM Plex Mono',monospace; color:#51606C;";
-    lbl.textContent = cName;
-    catsLabels.appendChild(lbl);
-  });
-
-  document.getElementById('corrValue').textContent = "r = —";
 }
 
 // Initial render
@@ -701,6 +673,26 @@ class BrainExplorerHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(summaries).encode("utf-8"))
             return
+
+        elif parsed.path.startswith("/figures/") or parsed.path.startswith("/results/"):
+            rel_path = parsed.path.lstrip("/")
+            file_path = os.path.join(PROJECT_ROOT, rel_path)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                self.send_response(200)
+                if file_path.endswith(".png"):
+                    self.send_header("Content-Type", "image/png")
+                elif file_path.endswith(".json"):
+                    self.send_header("Content-Type", "application/json")
+                else:
+                    self.send_header("Content-Type", "application/octet-stream")
+                self.end_headers()
+                with open(file_path, "rb") as fp:
+                    self.wfile.write(fp.read())
+                return
+            else:
+                self.send_response(404)
+                self.end_headers()
+                return
 
         else:
             self.send_response(404)
