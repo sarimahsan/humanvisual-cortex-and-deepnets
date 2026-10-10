@@ -48,13 +48,12 @@ features/cache/*.npz
 features/cache/*.json
 !features/cache/.gitkeep
 
-# Results binary arrays (keep summary JSON, ignore large vertex arrays)
-results/*.npz
-results/*.npy
-results/vertex_correlations_*.npz
+# Results directory and reports (keep local, do not push)
+results/
+BRAIN_ENCODING_RESULTS.md
 
-# Generated figures (optional: ignore temp figures, or allow committed final figures)
-figures/test_figures/
+# Generated figures directory (keep local, do not push)
+figures/
 
 # Operating System files
 .DS_Store
