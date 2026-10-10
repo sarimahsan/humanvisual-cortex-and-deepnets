@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brain Encoding Explorer | Human Visual Cortex & Deep-Nets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Top Hero Header -->
+    <header class="top-banner">
+      <div>
+        <div class="banner-meta">Natural Scenes Dataset · 7T fMRI · 39,548 Cortical Vertices</div>
+        <h1>Human Visual Cortex & Deep-Net Encoding Explorer</h1>
+        <div class="banner-desc">
+          Predicting biological cortical representations across CNNs, Vision Transformers, and Multimodal CLIP.
+        </div>
+      </div>
+      <div id="dataBadge" class="data-badge">Connecting...</div>
+    </header>
+
+    <!-- Navigation View Tabs -->
+    <nav class="tab-bar">
+      <button type="button" class="tab-btn active" id="tabExplorerBtn" onclick="switchTab('explorer')">
+        Interactive Heatmap & Layer Inspector
+      </button>
+      <button type="button" class="tab-btn" id="tabFiguresBtn" onclick="switchTab('figures')">
+        Publication Figures & Diagnostics Suite (7 Figures)
+      </button>
+    </nav>
+
+    <!-- ================= VIEW 1: INTERACTIVE EXPLORER ================= -->
+    <main id="viewExplorer" style="display:flex; flex-direction:column; gap:20px;">
+      
+      <!-- Controls Bar -->
+      <section class="card controls-card">
+        <div style="flex:2 1 480px; min-width:0;">
+          <div class="section-label">Select Computational Model / Paradigm</div>
+          <div id="modelButtons" class="model-buttons-grid"></div>
+        </div>
+        <div style="flex:1 1 220px;">
+          <div class="section-label">Hierarchy Alignment (Spearman ρ)</div>
+          <div id="hierarchyScoreBox" class="hierarchy-pill">Loading...</div>
+        </div>
+      </section>
+
+      <!-- Champion Performance Pill -->
+      <div id="championBanner" class="champion-banner">
+        <span>🌟 Calculating top performer...</span>
+      </div>
+
+      <!-- Main Split Layout: Matrix + Detail Inspector -->
+      <div class="main-grid">
+        
+        <!-- Left: Matrix & Heatmap Table (with scroll wrapper to prevent overflow) -->
+        <section class="card matrix-container">
+          <div class="matrix-header-info">
+            <div>
+              <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer × Cortical Region Encoding Matrix</h2>
+              <div id="heatmapSubtitle" style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B; margin-top:4px;">
+                Cross-validated Pearson correlation (r) per visual area. Scroll horizontally if needed.
+              </div>
+            </div>
+            <div style="font:500 11px/1 'IBM Plex Mono',monospace; color:#64748B;">
+              Scale: <b style="color:#073B52">0.20</b> → <b style="color:#EA580C">0.60+</b>
+            </div>
+          </div>
+
+          <!-- Horizontal Scroll Wrapper Guaranteeing Zero Layout Overflow -->
+          <div class="matrix-scroll-wrapper">
+            <div class="matrix-table">
+              <div id="matrixHeaderRow" class="matrix-header-row"></div>
+              <div id="matrixTableBody" style="display:table-row-group;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Detail Representation Panel -->
+        <aside class="card detail-panel">
+          <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer Representation Profile</h2>
+          <div id="detailHeader" style="font:500 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B;">
+            Click any cell to inspect representation tuning.
+          </div>
+
+          <div class="detail-stat-card">
+            <div class="detail-row">
+              <span class="detail-lbl">Selected Layer</span>
+              <span id="detailLayerName" class="detail-val">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-lbl">Normalized Depth</span>
+              <span id="detailLayerDepth" class="detail-val">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-lbl">ROI Predictivity</span>
+              <span id="detailScore" class="detail-score-val">—</span>
+            </div>
+          </div>
+
+          <!-- Anatomical Progression Profile Across ROIs -->
+          <div class="section-label" style="margin-top:4px;">
+            Profile Across Visual Hierarchy (V1 → RSC)
+          </div>
+          <div id="roiProfileBars" class="profile-bars-container"></div>
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- ================= VIEW 2: PUBLICATION FIGURES ================= -->
+    <section id="viewFigures" style="display:none;" class="figures-grid">
+      
+      <!-- Fig 1 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig1_layer_roi_heatmap.png', 'Figure 1: Layer × ROI Encoding Accuracy Heatmap')">
+        <div class="fig-card-header">
+          <h3>Figure 1 · Layer × ROI Heatmap</h3>
+          <p>Layer-by-layer alignment progression across canonical visual areas.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig1_layer_roi_heatmap.png" alt="Figure 1" onerror="this.src='/results/fig1_layer_roi_heatmap.png';">
+      </div>
+
+      <!-- Fig 2 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig2_model_comparison.png', 'Figure 2: Cross-Model Encoding Performance Across ROIs')">
+        <div class="fig-card-header">
+          <h3>Figure 2 · Multi-Model Comparison</h3>
+          <p>Grouped comparison of CNNs, Transformers, CLIP, and baselines.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig2_model_comparison.png" alt="Figure 2" onerror="this.src='/results/fig2_model_comparison.png';">
+      </div>
+
+      <!-- Fig 3 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig3_hierarchy_alignment.png', 'Figure 3: Cortical Hierarchy Rank Order Alignment (Spearman ρ)')">
+        <div class="fig-card-header">
+          <h3>Figure 3 · Hierarchy Rank Alignment</h3>
+          <p>Anatomical hierarchy rank vs. network peak depth with permutation test.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig3_hierarchy_alignment.png" alt="Figure 3" onerror="this.src='/results/fig3_hierarchy_alignment.png';">
+      </div>
+
+      <!-- Fig 6 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig6_cortical_layer_maps.png', 'Figure 6: Cortical Surface Layer Selectivity & Center-of-Mass Depth')">
+        <div class="fig-card-header">
+          <h3>Figure 6 · Cortical Depth Distributions</h3>
+          <p>Continuous center-of-mass depth across 39,548 vertices and visual ROIs.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig6_cortical_layer_maps.png" alt="Figure 6">
+      </div>
+
+      <!-- Fig 7 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig7_variance_partitioning.png', 'Figure 7: Variance Partitioning (Unique Early vs Unique Late Variance)')">
+        <div class="fig-card-header">
+          <h3>Figure 7 · Variance Partitioning</h3>
+          <p>Unique early conv variance vs. unique semantic variance across visual cortex.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig7_variance_partitioning.png" alt="Figure 7">
+      </div>
+
+    </section>
+
+    <!-- Modal for Full-Res Figure Zoom -->
+    <div id="figModal" class="fig-modal-overlay" onclick="closeFigureModal()">
+      <div class="fig-modal-content" onclick="event.stopPropagation()">
+        <div class="fig-modal-title-bar">
+          <h3 id="modalTitle" style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Figure Zoom</h3>
+          <button type="button" onclick="closeFigureModal()" style="font:600 20px/1 'IBM Plex Mono',monospace; padding:4px 10px;">✕</button>
+        </div>
+        <img id="modalImg" class="fig-modal-img" src="" alt="Zoomed Figure">
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
