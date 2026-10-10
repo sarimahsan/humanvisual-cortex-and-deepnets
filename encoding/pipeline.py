@@ -79,6 +79,8 @@ class EncodingPipeline:
         reducer = FeatureReducer(n_components=pca_dim, random_state=self.exp_cfg["experiment"]["seed"])
         X_train_pca = reducer.fit_transform_train(X_train_raw)
         X_test_pca = reducer.transform_test(X_test_raw)
+        del X_train_raw, X_test_raw
+        import gc; gc.collect()
 
         # 2. Chunked Ridge Regression
         chunk_size = self.exp_cfg["encoding"].get("vertex_chunk_size", 2048)
@@ -207,6 +209,10 @@ class EncodingPipeline:
                 res["normalized_depth"] = l_info.get("normalized_depth", 0.5)
                 res["layer_desc"] = l_info.get("desc", "")
                 all_results[f"{m_key}_{l_name}"] = res
+                del X_feat
+                import gc; gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
         # Save summary JSON (without massive vertex arrays)
         summary_out = {}

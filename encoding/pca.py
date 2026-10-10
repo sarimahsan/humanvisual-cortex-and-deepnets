@@ -28,15 +28,15 @@ class FeatureReducer:
         Fits mean/std and PCA strictly on training features and returns reduced X_train.
         X_train shape: (N_train, D)
         """
-        X_train_f32 = np.asarray(X_train, dtype=np.float32)
-
-        # 1. Train-only standardization
-        self.mean_ = np.mean(X_train_f32, axis=0, keepdims=True)
-        self.std_ = np.std(X_train_f32, axis=0, keepdims=True)
+        # 1. Train-only standardization (in-place to conserve RAM)
+        X_train_scaled = np.array(X_train, dtype=np.float32)
+        self.mean_ = np.mean(X_train_scaled, axis=0, keepdims=True)
+        self.std_ = np.std(X_train_scaled, axis=0, keepdims=True)
         # Avoid division by zero for invariant dimensions
         self.std_[self.std_ < 1e-7] = 1.0
 
-        X_train_scaled = (X_train_f32 - self.mean_) / self.std_
+        X_train_scaled -= self.mean_
+        X_train_scaled /= self.std_
 
         # 2. Fit PCA via SVD or sklearn if available
         n_samples, n_features = X_train_scaled.shape

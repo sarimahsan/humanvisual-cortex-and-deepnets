@@ -40,22 +40,26 @@ class SpatialFeatureHook:
 
         with torch.no_grad():
             if self.is_vit:
-                # ViT tensor: (B, 1 + N_patches, D) or (B, N_patches, D)
+                grid_sz = tuple(self.pooling_config.get("patch_grid", [2, 2]))
                 if act.ndim == 3:
                     b, seq_len, dim = act.shape
                     if seq_len == 197:  # 1 CLS + 14x14 patches
                         cls_tok = act[:, 0, :]  # (B, D)
                         patch_toks = act[:, 1:, :]  # (B, 196, D)
-                        # Reshape patches to spatial grid (B, D, 14, 14)
                         patch_grid = patch_toks.transpose(1, 2).reshape(b, dim, 14, 14)
-                        # Adaptive pool patch grid to 2x2
-                        grid_sz = tuple(self.pooling_config.get("patch_grid", [2, 2]))
                         pooled_patches = F.adaptive_avg_pool2d(patch_grid, grid_sz)  # (B, D, 2, 2)
                         pooled_flat = pooled_patches.flatten(1)  # (B, D * 4)
                         combined = torch.cat([cls_tok, pooled_flat], dim=1)  # (B, 5 * D)
                         self.activation = combined.detach().cpu()
+                    elif seq_len == 196:  # 14x14 patches (no CLS, e.g. patch_embed)
+                        patch_grid = act.transpose(1, 2).reshape(b, dim, 14, 14)
+                        pooled_patches = F.adaptive_avg_pool2d(patch_grid, grid_sz)  # (B, D, 2, 2)
+                        self.activation = pooled_patches.flatten(1).detach().cpu()  # (B, D * 4)
                     else:
-                        self.activation = act.flatten(1).detach().cpu()
+                        self.activation = act.mean(dim=1).detach().cpu()  # Global token average
+                elif act.ndim == 4:
+                    pooled = F.adaptive_avg_pool2d(act, grid_sz)
+                    self.activation = pooled.flatten(1).detach().cpu()
                 else:
                     self.activation = act.flatten(1).detach().cpu()
             else:
