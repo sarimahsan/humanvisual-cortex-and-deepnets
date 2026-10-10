@@ -53,64 +53,101 @@ def compute_peak_layer_per_roi(
 
 
 def compute_center_of_mass_depth_per_roi(
-    summary_results: Dict[str, Any], model_key: str
+    summary_results: Dict[str, Any], model_key: str, baseline_subtracted: bool = True
 ) -> Dict[str, float]:
     """
     Computes continuous center-of-mass depth per ROI:
-    d_bar = sum(d_i * max(0, r_i)) / sum(max(0, r_i))
-    Eliminates argmax instability and discrete tie fragility.
+    d_bar = sum(d_i * w_i) / sum(w_i)
+
+    When baseline_subtracted=True (recommended), w_i = max(0, r_i - min_l(r_l)),
+    which removes the baseline correlation pedestal present across all layers
+    and expands the dynamic range across the cortical hierarchy.
+    When baseline_subtracted=False, w_i = max(0, r_i).
     """
     model_entries = [
         v for v in summary_results.values() if v.get("model_key") == model_key
     ]
     com_depths = {}
     for roi in ROI_HIERARCHY_RANK.keys():
-        weights = []
-        depths = []
-        for e in model_entries:
-            r = e.get("roi_medians", {}).get(roi, 0.0)
-            d = e.get("normalized_depth", 0.0)
-            weights.append(max(0.0, float(r)))
-            depths.append(float(d))
-        w = np.array(weights)
-        d = np.array(depths)
-        if w.sum() > 0:
-            com_depths[roi] = float(np.sum(d * w) / np.sum(w))
-        else:
+        rs = [e.get("roi_medians", {}).get(roi, 0.0) for e in model_entries]
+        ds = [e.get("normalized_depth", 0.0) for e in model_entries]
+
+        if not rs:
             com_depths[roi] = 0.5
+            continue
+
+        r_arr = np.array(rs, dtype=float)
+        d_arr = np.array(ds, dtype=float)
+
+        if baseline_subtracted:
+            min_r = np.min(r_arr)
+            weights = np.maximum(0.0, r_arr - min_r)
+        else:
+            weights = np.maximum(0.0, r_arr)
+
+        if np.sum(weights) > 0:
+            com_depths[roi] = float(np.sum(d_arr * weights) / np.sum(weights))
+        else:
+            com_depths[roi] = float(np.mean(d_arr))
     return com_depths
 
 
 def evaluate_hierarchy_correlation(
-    roi_peaks: Dict[str, Dict[str, float]], n_bootstraps: int = 1000, n_permutations: int = 10000
+    roi_depths: Dict[str, Any], n_bootstraps: int = 1000, n_permutations: int = 10000
 ) -> Dict[str, Any]:
     """
-    Calculates Spearman rho between anatomical hierarchy rank and best-layer normalized depth.
-    Computes 95% bootstrap confidence interval over ROIs and exact non-parametric permutation p-value.
+    Calculates Spearman rho between anatomical hierarchy rank and normalized depth.
+    Accepts either:
+      - roi_peaks dict: {roi: {"anatomical_rank": int, "normalized_depth": float, ...}}
+      - continuous com_depths dict: {roi: float}
+
+    Computes:
+      - Asymptotic p-value (Student's t / scipy)
+      - Non-parametric Monte Carlo permutation p-value (shuffling ROI ranks N times)
+      - 95% bootstrap confidence interval over ROIs
     """
-    rois = list(roi_peaks.keys())
+    rois = list(roi_depths.keys())
     if len(rois) < 3:
         return {
             "spearman_rho": float("nan"),
             "p_value": float("nan"),
             "permutation_p_value": float("nan"),
+            "permutation_p_formatted": "N/A",
             "ci_95": (float("nan"), float("nan")),
         }
 
-    ranks = np.array([roi_peaks[r]["anatomical_rank"] for r in rois])
-    depths = np.array([roi_peaks[r]["normalized_depth"] for r in rois])
+    ranks = []
+    depths = []
+    for r in rois:
+        val = roi_depths[r]
+        if isinstance(val, dict):
+            ranks.append(val.get("anatomical_rank", ROI_HIERARCHY_RANK.get(r, 0)))
+            depths.append(val.get("normalized_depth", 0.0))
+        else:
+            ranks.append(ROI_HIERARCHY_RANK.get(r, 0))
+            depths.append(float(val))
+
+    ranks = np.array(ranks)
+    depths = np.array(depths)
 
     rho, p_val = spearmanr(ranks, depths)
 
-    # Permutation test (shuffling ROI ranks to test against spatial / label null)
+    # Fast Vectorized Monte Carlo permutation test
+    from scipy.stats import rankdata
+    ranks_ranked = rankdata(ranks)
+    depths_ranked = rankdata(depths)
+    r_c = ranks_ranked - np.mean(ranks_ranked)
+    d_c = depths_ranked - np.mean(depths_ranked)
+    denom = np.sqrt(np.sum(r_c**2) * np.sum(d_c**2))
+
     rng = np.random.RandomState(42)
-    perm_rhos = []
-    for _ in range(n_permutations):
-        perm_ranks = rng.permutation(ranks)
-        prho, _ = spearmanr(perm_ranks, depths)
-        perm_rhos.append(prho)
-    perm_rhos = np.array(perm_rhos)
-    perm_p = float((np.abs(perm_rhos) >= np.abs(rho)).mean())
+    perm_matrix = np.array([rng.permutation(r_c) for _ in range(n_permutations)])
+    perm_rhos = np.dot(perm_matrix, d_c) / denom if denom > 0 else np.zeros(n_permutations)
+    
+    # Empirical count of permutations exceeding or matching true rho
+    extreme_count = np.sum(np.abs(perm_rhos) >= np.abs(rho))
+    perm_p = float(extreme_count / n_permutations)
+    perm_p_formatted = f"< {1/n_permutations:.0e}" if extreme_count == 0 else f"{perm_p:.4f}"
 
     # Bootstrap over ROIs
     boot_rhos = []
@@ -128,6 +165,7 @@ def evaluate_hierarchy_correlation(
         "spearman_rho": float(rho),
         "p_value": float(p_val),
         "permutation_p_value": perm_p,
+        "permutation_p_formatted": perm_p_formatted,
         "ci_95": (ci_lower, ci_upper),
         "rois": rois,
         "ranks": ranks.tolist(),

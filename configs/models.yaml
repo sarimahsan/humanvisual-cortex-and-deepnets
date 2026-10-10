@@ -118,26 +118,26 @@ models:
       patch_grid: [2, 2]
     layers:
       - name: "patch_embed"
-        normalized_depth: 0.083
-        desc: "Patch Projection"
+        normalized_depth: 0.000
+        desc: "Patch Projection (Stem)"
       - name: "blocks.1"
-        normalized_depth: 0.250
-        desc: "Transformer Block 2"
+        normalized_depth: 0.167
+        desc: "Transformer Block 2 (2/12)"
       - name: "blocks.3"
-        normalized_depth: 0.417
-        desc: "Transformer Block 4"
+        normalized_depth: 0.333
+        desc: "Transformer Block 4 (4/12)"
       - name: "blocks.5"
-        normalized_depth: 0.583
-        desc: "Transformer Block 6"
+        normalized_depth: 0.500
+        desc: "Transformer Block 6 (6/12)"
       - name: "blocks.7"
-        normalized_depth: 0.750
-        desc: "Transformer Block 8"
+        normalized_depth: 0.667
+        desc: "Transformer Block 8 (8/12)"
       - name: "blocks.9"
         normalized_depth: 0.833
-        desc: "Transformer Block 10"
+        desc: "Transformer Block 10 (10/12)"
       - name: "blocks.11"
         normalized_depth: 1.000
-        desc: "Transformer Block 12 (Final)"
+        desc: "Transformer Block 12 (12/12 Final)"
 
   dino_vit_small:
     name: "DINO ViT-S/16 (Self-Supervised)"
@@ -150,26 +150,26 @@ models:
       patch_grid: [2, 2]
     layers:
       - name: "patch_embed"
-        normalized_depth: 0.083
-        desc: "Patch Projection"
+        normalized_depth: 0.000
+        desc: "Patch Projection (Stem)"
       - name: "blocks.1"
-        normalized_depth: 0.250
-        desc: "Transformer Block 2"
+        normalized_depth: 0.167
+        desc: "Transformer Block 2 (2/12)"
       - name: "blocks.3"
-        normalized_depth: 0.417
-        desc: "Transformer Block 4"
+        normalized_depth: 0.333
+        desc: "Transformer Block 4 (4/12)"
       - name: "blocks.5"
-        normalized_depth: 0.583
-        desc: "Transformer Block 6"
+        normalized_depth: 0.500
+        desc: "Transformer Block 6 (6/12)"
       - name: "blocks.7"
-        normalized_depth: 0.750
-        desc: "Transformer Block 8"
+        normalized_depth: 0.667
+        desc: "Transformer Block 8 (8/12)"
       - name: "blocks.9"
         normalized_depth: 0.833
-        desc: "Transformer Block 10"
+        desc: "Transformer Block 10 (10/12)"
       - name: "blocks.11"
         normalized_depth: 1.000
-        desc: "Transformer Block 12 (Final)"
+        desc: "Transformer Block 12 (12/12 Final)"
 
   clip_vit_b16:
     name: "CLIP ViT-B/16 (Language-Image)"
@@ -182,26 +182,26 @@ models:
       patch_grid: [2, 2]
     layers:
       - name: "conv1"
-        normalized_depth: 0.083
+        normalized_depth: 0.000
         desc: "Patch Conv Stem"
       - name: "transformer.resblocks.1"
-        normalized_depth: 0.250
-        desc: "ResBlock 2"
+        normalized_depth: 0.167
+        desc: "ResBlock 2 (2/12)"
       - name: "transformer.resblocks.3"
-        normalized_depth: 0.417
-        desc: "ResBlock 4"
+        normalized_depth: 0.333
+        desc: "ResBlock 4 (4/12)"
       - name: "transformer.resblocks.5"
-        normalized_depth: 0.583
-        desc: "ResBlock 6"
+        normalized_depth: 0.500
+        desc: "ResBlock 6 (6/12)"
       - name: "transformer.resblocks.7"
-        normalized_depth: 0.750
-        desc: "ResBlock 8"
+        normalized_depth: 0.667
+        desc: "ResBlock 8 (8/12)"
       - name: "transformer.resblocks.9"
         normalized_depth: 0.833
-        desc: "ResBlock 10"
+        desc: "ResBlock 10 (10/12)"
       - name: "transformer.resblocks.11"
         normalized_depth: 1.000
-        desc: "ResBlock 12 (Penultimate Layer)"
+        desc: "ResBlock 12 (12/12 Final)"
 
 controls:
   gabor_pyramid:
