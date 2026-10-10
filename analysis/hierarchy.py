@@ -52,24 +52,67 @@ def compute_peak_layer_per_roi(
     return roi_peaks
 
 
+def compute_center_of_mass_depth_per_roi(
+    summary_results: Dict[str, Any], model_key: str
+) -> Dict[str, float]:
+    """
+    Computes continuous center-of-mass depth per ROI:
+    d_bar = sum(d_i * max(0, r_i)) / sum(max(0, r_i))
+    Eliminates argmax instability and discrete tie fragility.
+    """
+    model_entries = [
+        v for v in summary_results.values() if v.get("model_key") == model_key
+    ]
+    com_depths = {}
+    for roi in ROI_HIERARCHY_RANK.keys():
+        weights = []
+        depths = []
+        for e in model_entries:
+            r = e.get("roi_medians", {}).get(roi, 0.0)
+            d = e.get("normalized_depth", 0.0)
+            weights.append(max(0.0, float(r)))
+            depths.append(float(d))
+        w = np.array(weights)
+        d = np.array(depths)
+        if w.sum() > 0:
+            com_depths[roi] = float(np.sum(d * w) / np.sum(w))
+        else:
+            com_depths[roi] = 0.5
+    return com_depths
+
+
 def evaluate_hierarchy_correlation(
-    roi_peaks: Dict[str, Dict[str, float]], n_bootstraps: int = 1000
+    roi_peaks: Dict[str, Dict[str, float]], n_bootstraps: int = 1000, n_permutations: int = 10000
 ) -> Dict[str, Any]:
     """
     Calculates Spearman rho between anatomical hierarchy rank and best-layer normalized depth.
-    Computes 95% bootstrap confidence interval over ROIs.
+    Computes 95% bootstrap confidence interval over ROIs and exact non-parametric permutation p-value.
     """
     rois = list(roi_peaks.keys())
     if len(rois) < 3:
-        return {"spearman_rho": float("nan"), "p_value": float("nan"), "ci_95": (float("nan"), float("nan"))}
+        return {
+            "spearman_rho": float("nan"),
+            "p_value": float("nan"),
+            "permutation_p_value": float("nan"),
+            "ci_95": (float("nan"), float("nan")),
+        }
 
     ranks = np.array([roi_peaks[r]["anatomical_rank"] for r in rois])
     depths = np.array([roi_peaks[r]["normalized_depth"] for r in rois])
 
     rho, p_val = spearmanr(ranks, depths)
 
-    # Bootstrap over ROIs
+    # Permutation test (shuffling ROI ranks to test against spatial / label null)
     rng = np.random.RandomState(42)
+    perm_rhos = []
+    for _ in range(n_permutations):
+        perm_ranks = rng.permutation(ranks)
+        prho, _ = spearmanr(perm_ranks, depths)
+        perm_rhos.append(prho)
+    perm_rhos = np.array(perm_rhos)
+    perm_p = float((np.abs(perm_rhos) >= np.abs(rho)).mean())
+
+    # Bootstrap over ROIs
     boot_rhos = []
     n = len(ranks)
     for _ in range(n_bootstraps):
@@ -84,8 +127,10 @@ def evaluate_hierarchy_correlation(
     return {
         "spearman_rho": float(rho),
         "p_value": float(p_val),
+        "permutation_p_value": perm_p,
         "ci_95": (ci_lower, ci_upper),
         "rois": rois,
         "ranks": ranks.tolist(),
         "depths": depths.tolist(),
     }
+
