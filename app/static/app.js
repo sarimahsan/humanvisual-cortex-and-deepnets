@@ -31,6 +31,52 @@ const HIERARCHY_METRICS = {
   gabor_pyramid: { rho: null, p: null, com_rho: null }
 };
 
+function getCleanLayerTitle(layerName, layerDesc) {
+  const map = {
+    // CLIP ViT-B/16
+    'conv1': 'Stem (Patch Conv)',
+    'transformer.resblocks.1': 'ResBlock 2',
+    'transformer.resblocks.3': 'ResBlock 4',
+    'transformer.resblocks.5': 'ResBlock 6',
+    'transformer.resblocks.7': 'ResBlock 8',
+    'transformer.resblocks.9': 'ResBlock 10',
+    'transformer.resblocks.11': 'ResBlock 12 (Final)',
+
+    // DeiT-S
+    'patch_embed': 'Stem (Patch Embed)',
+    'blocks.1': 'Block 2',
+    'blocks.3': 'Block 4',
+    'blocks.5': 'Block 6',
+    'blocks.7': 'Block 8',
+    'blocks.9': 'Block 10',
+    'blocks.11': 'Block 12 (Final)',
+
+    // AlexNet
+    'features.1': 'Conv 1 (ReLU)',
+    'features.4': 'Conv 2 (ReLU)',
+    'features.7': 'Conv 3 (ReLU)',
+    'features.9': 'Conv 4 (ReLU)',
+    'features.11': 'Conv 5 (ReLU)',
+    'classifier.1': 'FC 6 (Latent)',
+    'classifier.4': 'FC 7 (Semantic)',
+    'classifier.6': 'FC 8 (Logits)',
+
+    // ResNet-50
+    'relu': 'Stem (Conv1+ReLU)',
+    'layer1.0': 'Stage 1 (Sub-block 1)',
+    'layer1.2': 'Stage 1 End',
+    'layer2.1': 'Stage 2 Mid',
+    'layer2.3': 'Stage 2 End',
+    'layer3.2': 'Stage 3 Mid',
+    'layer3.5': 'Stage 3 End',
+    'layer4.2': 'Stage 4 End (Bottleneck)',
+  };
+
+  if (map[layerName]) return map[layerName];
+  if (layerDesc) return layerDesc.split('(')[0].trim();
+  return layerName;
+}
+
 function switchTab(tab) {
   const isExp = tab === 'explorer';
   document.getElementById('viewExplorer').style.display = isExp ? 'flex' : 'none';
@@ -159,8 +205,20 @@ function render() {
 
       const label = document.createElement('div');
       label.className = 'matrix-layer-label';
-      label.title = entry.layer_name;
-      label.textContent = entry.layer_name;
+      label.title = `${entry.layer_desc || entry.layer_name} (${entry.layer_name})`;
+
+      const cleanName = getCleanLayerTitle(entry.layer_name, entry.layer_desc);
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'layer-display-title';
+      titleEl.textContent = cleanName;
+
+      const codeEl = document.createElement('div');
+      codeEl.className = 'layer-display-code';
+      codeEl.textContent = entry.layer_name;
+
+      label.appendChild(titleEl);
+      label.appendChild(codeEl);
       row.appendChild(label);
 
       AREAS.forEach((aName, aIdx) => {
