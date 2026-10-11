@@ -459,7 +459,7 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
-/* Publication Figures Tab */
+/* Figures View */
 .figures-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));

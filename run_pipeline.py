@@ -6,7 +6,7 @@ One single command reproduces:
 2. SVD / Kernel Ridge regression encoding models.
 3. Out-of-sample held-out test evaluation.
 4. Hierarchy analysis (Spearman rho & bootstrap CIs).
-5. Generation of all publication-quality static figures.
+5. Generation of analysis figures in figures/.
 """
 
 import argparse
@@ -107,9 +107,9 @@ def run_end_to_end(
     print("-------------------------------------------------------------")
 
     # -------------------------------------------------------------
-    # Step 4: Generate All Publication Figures
+    # Step 4: Generate Figures
     # -------------------------------------------------------------
-    print("\n[Step 4/4] Generating Publication Figures in figures/...")
+    print("\n[Step 4/4] Generating figures in figures/...")
     os.makedirs("figures", exist_ok=True)
 
     # Figure 1: Heatmap

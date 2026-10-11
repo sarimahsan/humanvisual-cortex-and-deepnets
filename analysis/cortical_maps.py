@@ -3,7 +3,7 @@ Cortical Layer Selectivity Maps Analysis.
 
 Computes vertex-wise best-predicting layer, normalized depth, and continuous
 center-of-mass depth across all 39,548 cortical vertices from vertex_correlations.
-Generates publication-quality cortical topography plots.
+Generates cortical topography plots in figures/.
 """
 
 from typing import Dict, Any, Optional
@@ -98,7 +98,7 @@ def plot_cortical_layer_distribution(
     output_path: str = "figures/fig6_cortical_layer_maps.png",
     roi_mgr: Optional[ROIManager] = None,
 ) -> None:
-    """Plots publication figure showing cortical depth distributions and ROI selectivity profiles."""
+    """Plots figure showing cortical depth distributions and ROI selectivity profiles."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5), dpi=300)
 

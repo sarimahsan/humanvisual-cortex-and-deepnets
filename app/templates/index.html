@@ -30,7 +30,7 @@
         Interactive Heatmap & Layer Inspector
       </button>
       <button type="button" class="tab-btn" id="tabFiguresBtn" onclick="switchTab('figures')">
-        Publication Figures & Diagnostics Suite (7 Figures)
+        Figures (1–7)
       </button>
     </nav>
 
@@ -112,7 +112,7 @@
       </div>
     </main>
 
-    <!-- ================= VIEW 2: PUBLICATION FIGURES ================= -->
+    <!-- ================= VIEW 2: FIGURES ================= -->
     <section id="viewFigures" style="display:none;" class="figures-grid">
       
       <!-- Fig 1 -->
@@ -128,7 +128,7 @@
       <div class="fig-card" onclick="openFigureModal('/figures/fig2_model_comparison.png', 'Figure 2: Cross-Model Encoding Performance Across ROIs')">
         <div class="fig-card-header">
           <h3>Figure 2 · Multi-Model Comparison</h3>
-          <p>Grouped comparison of CNNs, Transformers, CLIP, and baselines.</p>
+          <p>Grouped comparison of CNNs, Transformers, CLIP, and baselines with bootstrap CIs.</p>
         </div>
         <img class="fig-img-preview" src="/figures/fig2_model_comparison.png" alt="Figure 2" onerror="this.src='/results/fig2_model_comparison.png';">
       </div>
@@ -142,13 +142,31 @@
         <img class="fig-img-preview" src="/figures/fig3_hierarchy_alignment.png" alt="Figure 3" onerror="this.src='/results/fig3_hierarchy_alignment.png';">
       </div>
 
+      <!-- Fig 4 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig4_category_selectivity.png', 'Figure 4: Category Selectivity Tuning Profiles (FFA, PPA, EBA)')">
+        <div class="fig-card-header">
+          <h3>Figure 4 · Category Selectivity</h3>
+          <p>Predicted vs. measured category tuning curves across FFA, PPA, and EBA domains.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig4_category_selectivity.png" alt="Figure 4" onerror="this.src='/results/fig4_category_selectivity.png';">
+      </div>
+
+      <!-- Fig 5 -->
+      <div class="fig-card" onclick="openFigureModal('/figures/fig5_cross_subject_robustness.png', 'Figure 5: Cross-Subject Consistency & Noise Ceilings')">
+        <div class="fig-card-header">
+          <h3>Figure 5 · Cross-Subject Robustness</h3>
+          <p>Multi-subject ranking consistency, noise ceilings, and generalizability across participants.</p>
+        </div>
+        <img class="fig-img-preview" src="/figures/fig5_cross_subject_robustness.png" alt="Figure 5" onerror="this.src='/results/fig5_cross_subject_robustness.png';">
+      </div>
+
       <!-- Fig 6 -->
       <div class="fig-card" onclick="openFigureModal('/figures/fig6_cortical_layer_maps.png', 'Figure 6: Cortical Surface Layer Selectivity & Center-of-Mass Depth')">
         <div class="fig-card-header">
           <h3>Figure 6 · Cortical Depth Distributions</h3>
           <p>Continuous center-of-mass depth across 39,548 vertices and visual ROIs.</p>
         </div>
-        <img class="fig-img-preview" src="/figures/fig6_cortical_layer_maps.png" alt="Figure 6">
+        <img class="fig-img-preview" src="/figures/fig6_cortical_layer_maps.png" alt="Figure 6" onerror="this.src='/results/fig6_cortical_layer_maps.png';">
       </div>
 
       <!-- Fig 7 -->
@@ -157,7 +175,7 @@
           <h3>Figure 7 · Variance Partitioning</h3>
           <p>Unique early conv variance vs. unique semantic variance across visual cortex.</p>
         </div>
-        <img class="fig-img-preview" src="/figures/fig7_variance_partitioning.png" alt="Figure 7">
+        <img class="fig-img-preview" src="/figures/fig7_variance_partitioning.png" alt="Figure 7" onerror="this.src='/results/fig7_variance_partitioning.png';">
       </div>
 
     </section>

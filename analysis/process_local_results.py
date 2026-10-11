@@ -4,7 +4,7 @@ Process Local Results: Populate ROI Hierarchy and Generate Figures.
 Reads the real 39,548 vertex correlations from results/vertex_correlations_subj01.npz,
 computes real cortical visual area metrics (V1, V2, V3, hV4, EBA, FFA, PPA) across all
 models and layers, evaluates hierarchy alignment (Spearman rho), updates summary_subj01.json,
-and generates publication-ready figures in figures/.
+and generates figures in figures/.
 """
 
 import os
@@ -114,7 +114,7 @@ def run_local_analysis(subject_id: str = "subj01"):
 
     # 5. Generate Figures
     os.makedirs(os.path.join(PROJECT_ROOT, "figures"), exist_ok=True)
-    print("\nGenerating publication figures in figures/...")
+    print("\nGenerating figures in figures/...")
     
     heatmap_model = "resnet50" if "resnet50" in models else models[0]
     plot_layer_roi_heatmap(

@@ -1,7 +1,7 @@
 """
 Static Figure Generation for Visual Cortex Brain Encoding.
 
-Produces publication-quality figures using pure Matplotlib:
+Produces figures using pure Matplotlib:
 1. Fig 1: Layer x ROI Heatmap per model.
 2. Fig 2: Model comparison per ROI with untrained & Gabor controls.
 3. Fig 3: Hierarchy analysis (Best-layer depth vs. anatomical ROI order with Spearman rho).

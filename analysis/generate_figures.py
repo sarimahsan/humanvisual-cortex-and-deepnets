@@ -1,5 +1,5 @@
 """
-Generate Full Set of Publication-Ready Static Figures.
+Generate Static Figures.
 
 Produces:
 1. figures/fig1_layer_roi_heatmap.png: Layer x ROI alignment heatmap for ResNet-50.
@@ -71,7 +71,7 @@ def load_demo_or_real_summary(subject_id: str, model_key: str):
 
 def main():
     os.makedirs("figures", exist_ok=True)
-    print("Generating complete publication figure suite in figures/...")
+    print("Generating figures in figures/...")
 
     # 1. Fig 1: Layer x ROI Heatmap (ResNet-50)
     summary_res = load_demo_or_real_summary("subj01", "resnet50")
