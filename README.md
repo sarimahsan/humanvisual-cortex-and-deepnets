@@ -58,9 +58,13 @@ All metrics evaluated on held-out test splits (**Subject 01, Natural Scenes Data
 
 ---
 
-### Table 2: Baseline-Subtracted Center-of-Mass Depth ($\bar{d}$) Across the Cortical Hierarchy
+### Table 2: Baseline-Subtracted Center-of-Mass Depth Across the Cortical Hierarchy
 
-The Center-of-Mass depth metric weights each layer's normalized depth $d \in [0, 1]$ by its baseline-subtracted predictivity: $\bar{d} = \frac{\sum_l d_l (r_l - \min r)}{\sum_l (r_l - \min r)}$.
+The Center-of-Mass depth metric weights each layer's normalized depth $d \in [0, 1]$ by its baseline-subtracted predictivity:
+
+$$
+\bar{d} = \frac{\sum_l d_l (r_l - \min r)}{\sum_l (r_l - \min r)}
+$$
 
 | Cortical ROI | Anatomical Rank | AlexNet | ResNet-50 | DeiT-S | CLIP ViT-B/16 | Untrained ResNet-50 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -197,18 +201,31 @@ python -m analysis.plotting --output_dir figures/
 ## 📐 Mathematical Formulation & Methods
 
 ### 1. Voxel-wise Ridge Encoding Model
-For image features $X \in \mathbb{R}^{N \times D}$ and measured fMRI responses $Y \in \mathbb{R}^{N \times V}$:
-$$\hat{W} = \arg\min_W \|Y - XW\|_2^2 + \alpha \|W\|_2^2 = (X^T X + \alpha I)^{-1} X^T Y$$
-Cross-validation searches over logarithmic alpha values $\alpha \in \{10^1, 10^2, \dots, 10^7\}$. Evaluated via Pearson correlation:
-$$r_v = \frac{\sum_{i=1}^N (\hat{y}_{i,v} - \bar{\hat{y}}_v)(y_{i,v} - \bar{y}_v)}{\sqrt{\sum_{i=1}^N (\hat{y}_{i,v} - \bar{\hat{y}}_v)^2 \sum_{i=1}^N (y_{i,v} - \bar{y}_v)^2}}$$
 
-### 2. Baseline-Subtracted Center-of-Mass Depth ($\bar{d}$)
-To avoid distortion from high early baseline activations across all layers:
-$$\bar{d}_R = \frac{\sum_{l=1}^L d_l \cdot \max(0, r_{l,R} - \min_{k} r_{k,R})}{\sum_{l=1}^L \max(0, r_{l,R} - \min_{k} r_{k,R})}, \quad d_l \in [0, 1]$$
+For image feature activations $X \in \mathbb{R}^{N \times D}$ and measured fMRI responses $Y \in \mathbb{R}^{N \times V}$:
+
+$$
+\hat{W} = \arg\min_{W} \|Y - XW\|_2^2 + \alpha \|W\|_2^2 = (X^T X + \alpha I)^{-1} X^T Y
+$$
+
+Cross-validation searches over logarithmic regularization parameters $\alpha \in \{10^1, 10^2, \dots, 10^7\}$. Out-of-sample prediction accuracy is evaluated via vertex-wise Pearson correlation:
+
+$$
+r_v = \frac{\sum_{i=1}^N (\hat{y}_{i,v} - \bar{\hat{y}}_v)(y_{i,v} - \bar{y}_v)}{\sqrt{\sum_{i=1}^N (\hat{y}_{i,v} - \bar{\hat{y}}_v)^2 \cdot \sum_{i=1}^N (y_{i,v} - \bar{y}_v)^2}}
+$$
+
+### 2. Baseline-Subtracted Center-of-Mass Depth
+
+To isolate representational tuning and avoid distortion from early retinotopic baselines across deep layers, we compute the baseline-subtracted Center-of-Mass depth $\bar{d}_R$ per cortical visual area $R$:
+
+$$
+\bar{d}_R = \frac{\sum_{l=1}^L d_l \cdot \max(0, r_{l,R} - \min_{k} r_{k,R})}{\sum_{l=1}^L \max(0, r_{l,R} - \min_{k} r_{k,R})}, \quad \text{where } d_l \in [0, 1]
+$$
 
 ### 3. Statistical Significance & Bootstrapping
-- **Permutation Tests**: $N=10,000$ permutations shuffling anatomical ROI ranks to evaluate null distribution $p$-values.
-- **Bootstrap Confidence Intervals**: $N=1,000$ paired image-level resamples with replacement to derive 95% CIs.
+
+- **Monte Carlo Permutation Tests**: $N=10,000$ permutations shuffling canonical anatomical ROI ranks to derive empirical null distributions and non-parametric $p$-values.
+- **Image-Level Paired Bootstrap**: $N=1,000$ resamples with replacement across held-out test stimuli to compute 95% confidence intervals on model hierarchy correlations.
 
 ---
 
