@@ -49,11 +49,9 @@ features/cache/*.json
 !features/cache/.gitkeep
 
 # Results directory and reports (keep local, do not push)
-results/
+
 BRAIN_ENCODING_RESULTS.md
 
-# Generated figures directory (keep local, do not push)
-figures/
 
 # Operating System files
 .DS_Store
@@ -69,3 +67,6 @@ ehthumbs.db
 
 # Local logs
 *.log
+
+
+/writeup

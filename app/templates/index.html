@@ -1,14 +1,17 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brain Encoding Explorer | Human Visual Cortex & Deep-Nets</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
   <div class="app-container">
 
@@ -29,14 +32,11 @@
       <button type="button" class="tab-btn active" id="tabExplorerBtn" onclick="switchTab('explorer')">
         Interactive Heatmap & Layer Inspector
       </button>
-      <button type="button" class="tab-btn" id="tabFiguresBtn" onclick="switchTab('figures')">
-        Figures (1–7)
-      </button>
     </nav>
 
     <!-- ================= VIEW 1: INTERACTIVE EXPLORER ================= -->
     <main id="viewExplorer" style="display:flex; flex-direction:column; gap:20px;">
-      
+
       <!-- Controls Bar -->
       <section class="card controls-card">
         <div style="flex:2 1 480px; min-width:0;">
@@ -56,13 +56,15 @@
 
       <!-- Main Split Layout: Matrix + Detail Inspector -->
       <div class="main-grid">
-        
+
         <!-- Left: Matrix & Heatmap Table (with scroll wrapper to prevent overflow) -->
         <section class="card matrix-container">
           <div class="matrix-header-info">
             <div>
-              <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer × Cortical Region Encoding Matrix</h2>
-              <div id="heatmapSubtitle" style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B; margin-top:4px;">
+              <h2 style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Layer × Cortical Region Encoding
+                Matrix</h2>
+              <div id="heatmapSubtitle"
+                style="font:400 13px/1.4 'IBM Plex Sans',sans-serif; color:#64748B; margin-top:4px;">
                 Cross-validated Pearson correlation (r) per visual area across cortical hierarchy.
               </div>
             </div>
@@ -112,87 +114,7 @@
       </div>
     </main>
 
-    <!-- ================= VIEW 2: FIGURES ================= -->
-    <section id="viewFigures" style="display:none;" class="figures-grid">
-      
-      <!-- Fig 1 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig1_layer_roi_heatmap.png', 'Figure 1: Layer × ROI Encoding Accuracy Heatmap')">
-        <div class="fig-card-header">
-          <h3>Figure 1 · Layer × ROI Heatmap</h3>
-          <p>Layer-by-layer alignment progression across canonical visual areas.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig1_layer_roi_heatmap.png" alt="Figure 1" onerror="this.src='/results/fig1_layer_roi_heatmap.png';">
-      </div>
-
-      <!-- Fig 2 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig2_model_comparison.png', 'Figure 2: Cross-Model Encoding Performance Across ROIs')">
-        <div class="fig-card-header">
-          <h3>Figure 2 · Multi-Model Comparison</h3>
-          <p>Grouped comparison of CNNs, Transformers, CLIP, and baselines with bootstrap CIs.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig2_model_comparison.png" alt="Figure 2" onerror="this.src='/results/fig2_model_comparison.png';">
-      </div>
-
-      <!-- Fig 3 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig3_hierarchy_alignment.png', 'Figure 3: Cortical Hierarchy Rank Order Alignment (Spearman ρ)')">
-        <div class="fig-card-header">
-          <h3>Figure 3 · Hierarchy Rank Alignment</h3>
-          <p>Anatomical hierarchy rank vs. network peak depth with permutation test.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig3_hierarchy_alignment.png" alt="Figure 3" onerror="this.src='/results/fig3_hierarchy_alignment.png';">
-      </div>
-
-      <!-- Fig 4 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig4_category_selectivity.png', 'Figure 4: Category Selectivity Tuning Profiles (FFA, PPA, EBA)')">
-        <div class="fig-card-header">
-          <h3>Figure 4 · Category Selectivity</h3>
-          <p>Predicted vs. measured category tuning curves across FFA, PPA, and EBA domains.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig4_category_selectivity.png" alt="Figure 4" onerror="this.src='/results/fig4_category_selectivity.png';">
-      </div>
-
-      <!-- Fig 5 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig5_cross_subject_robustness.png', 'Figure 5: Cross-Subject Consistency & Noise Ceilings')">
-        <div class="fig-card-header">
-          <h3>Figure 5 · Cross-Subject Robustness</h3>
-          <p>Multi-subject ranking consistency, noise ceilings, and generalizability across participants.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig5_cross_subject_robustness.png" alt="Figure 5" onerror="this.src='/results/fig5_cross_subject_robustness.png';">
-      </div>
-
-      <!-- Fig 6 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig6_cortical_layer_maps.png', 'Figure 6: Cortical Surface Layer Selectivity & Center-of-Mass Depth')">
-        <div class="fig-card-header">
-          <h3>Figure 6 · Cortical Depth Distributions</h3>
-          <p>Continuous center-of-mass depth across 39,548 vertices and visual ROIs.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig6_cortical_layer_maps.png" alt="Figure 6" onerror="this.src='/results/fig6_cortical_layer_maps.png';">
-      </div>
-
-      <!-- Fig 7 -->
-      <div class="fig-card" onclick="openFigureModal('/figures/fig7_variance_partitioning.png', 'Figure 7: Variance Partitioning (Unique Early vs Unique Late Variance)')">
-        <div class="fig-card-header">
-          <h3>Figure 7 · Variance Partitioning</h3>
-          <p>Unique early conv variance vs. unique semantic variance across visual cortex.</p>
-        </div>
-        <img class="fig-img-preview" src="/figures/fig7_variance_partitioning.png" alt="Figure 7" onerror="this.src='/results/fig7_variance_partitioning.png';">
-      </div>
-
-    </section>
-
-    <!-- Modal for Full-Res Figure Zoom -->
-    <div id="figModal" class="fig-modal-overlay" onclick="closeFigureModal()">
-      <div class="fig-modal-content" onclick="event.stopPropagation()">
-        <div class="fig-modal-title-bar">
-          <h3 id="modalTitle" style="margin:0; font:700 18px/1.2 'IBM Plex Sans',sans-serif;">Figure Zoom</h3>
-          <button type="button" onclick="closeFigureModal()" style="font:600 20px/1 'IBM Plex Mono',monospace; padding:4px 10px;">✕</button>
-        </div>
-        <img id="modalImg" class="fig-modal-img" src="" alt="Zoomed Figure">
-      </div>
-    </div>
-
-  </div>
-
-  <script src="/static/app.js"></script>
+    <script src="/static/app.js"></script>
 </body>
+
 </html>

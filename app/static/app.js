@@ -131,7 +131,7 @@ function render() {
     btn.type = 'button';
     btn.className = `btn-model ${idx === mi ? 'active' : ''}`;
     btn.innerHTML = `<span class="model-title">${m.label}</span>` +
-                    `<span class="model-sub">${m.sub}</span>`;
+      `<span class="model-sub">${m.sub}</span>`;
     btn.onclick = () => { state.mi = idx; state.li = null; render(); };
     modelBtnsContainer.appendChild(btn);
   });
@@ -141,7 +141,7 @@ function render() {
   const hMet = HIERARCHY_METRICS[M.id];
   if (hMet && hMet.rho !== null) {
     const isPos = hMet.rho > 0;
-    hBox.innerHTML = `<span>Hierarchy ρ: <b style="color:${isPos ? '#059669':'#DC2626'}">${hMet.rho > 0 ? '+':''}${hMet.rho.toFixed(3)}</b> (p=${hMet.p.toFixed(4)}) · CoM: <b>${hMet.com_rho.toFixed(3)}</b></span>`;
+    hBox.innerHTML = `<span>Hierarchy ρ: <b style="color:${isPos ? '#059669' : '#DC2626'}">${hMet.rho > 0 ? '+' : ''}${hMet.rho.toFixed(3)}</b> (p=${hMet.p.toFixed(4)}) · CoM: <b>${hMet.com_rho.toFixed(3)}</b></span>`;
   } else {
     hBox.innerHTML = `<span>Hierarchy: Baseline Control</span>`;
   }
@@ -160,7 +160,7 @@ function render() {
 
   const campBanner = document.getElementById('championBanner');
   campBanner.innerHTML = `<span>🌟 <b>Top Performing Model in ${areaName}</b>: <strong style="color:#1D4ED8;">${champion.model}</strong> (${champion.score > 0 ? 'r = ' + champion.score.toFixed(4) : '—'})</span>` +
-                          `<span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#64748B;">Subject 01 · Held-Out Test Set</span>`;
+    `<span style="font:500 12px/1 'IBM Plex Mono',monospace; color:#64748B;">Subject 01 · Held-Out Test Set</span>`;
 
   // 5. Matrix Header Row
   const headerRow = document.getElementById('matrixHeaderRow');
@@ -224,7 +224,7 @@ function render() {
       AREAS.forEach((aName, aIdx) => {
         const cell = document.createElement('div');
         const val = (aName === 'Overall') ? entry.overall_median_r : (entry.roi_medians ? entry.roi_medians[aName] : null);
-        
+
         const isBest = (bestPerArea[aName] === lIdx);
         const isSelected = (aIdx === ai && (state.li === lIdx || state.li === null));
 
@@ -258,16 +258,16 @@ function render() {
   }
 
   // 7. Detail Representation Panel
-  const activeLayerIdx = (state.li !== null && state.li < entries.length) 
-    ? state.li 
+  const activeLayerIdx = (state.li !== null && state.li < entries.length)
+    ? state.li
     : (entries.length > 0 ? (bestPerArea[areaName] ?? 0) : null);
   const activeLayer = (activeLayerIdx !== null && entries[activeLayerIdx]) ? entries[activeLayerIdx] : null;
 
   if (activeLayer) {
     document.getElementById('detailLayerName').textContent = activeLayer.layer_name;
     document.getElementById('detailLayerDepth').textContent = (activeLayer.normalized_depth || 0).toFixed(3);
-    const scoreVal = (areaName === 'Overall') 
-      ? activeLayer.overall_median_r 
+    const scoreVal = (areaName === 'Overall')
+      ? activeLayer.overall_median_r
       : (activeLayer.roi_medians ? activeLayer.roi_medians[areaName] : null);
     document.getElementById('detailScore').textContent = scoreVal ? `r = ${scoreVal.toFixed(4)}` : 'r = —';
     document.getElementById('detailHeader').textContent = `${M.label} · ${activeLayer.layer_desc || activeLayer.layer_name}`;
@@ -281,7 +281,7 @@ function render() {
   const profileContainer = document.getElementById('roiProfileBars');
   profileContainer.innerHTML = '';
   const roisOnly = ['V1', 'V2', 'V3', 'hV4', 'OFA', 'OPA', 'EBA', 'FFA', 'PPA', 'RSC'];
-  
+
   roisOnly.forEach(roi => {
     const rRow = document.createElement('div');
     rRow.className = 'profile-bar-row';

@@ -1,0 +1,762 @@
+{
+  "alexnet_features.1": {
+    "model_key": "alexnet",
+    "layer_name": "features.1",
+    "normalized_depth": 0.125,
+    "layer_desc": "ReLU 1 (Early Gabor-like)",
+    "overall_median_r": 0.30223900079727173,
+    "roi_medians": {
+      "hV4": 0.3667522072792053,
+      "V2": 0.4584228992462158,
+      "EBA": 0.27457395195961,
+      "RSC": 0.40746697783470154,
+      "OFA": 0.3030189573764801,
+      "V3": 0.42674434185028076,
+      "V1": 0.5250109434127808,
+      "OPA": 0.31570643186569214,
+      "PPA": 0.33767396211624146,
+      "FFA": 0.2909546494483948
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_features.4": {
+    "model_key": "alexnet",
+    "layer_name": "features.4",
+    "normalized_depth": 0.25,
+    "layer_desc": "ReLU 2 (Intermediate edges)",
+    "overall_median_r": 0.3681640028953552,
+    "roi_medians": {
+      "hV4": 0.4410642981529236,
+      "V2": 0.5343675017356873,
+      "EBA": 0.36645209789276123,
+      "RSC": 0.46339428424835205,
+      "OFA": 0.38903170824050903,
+      "V3": 0.5057875514030457,
+      "V1": 0.5725823640823364,
+      "OPA": 0.3659149408340454,
+      "PPA": 0.3856292963027954,
+      "FFA": 0.36548545956611633
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_features.7": {
+    "model_key": "alexnet",
+    "layer_name": "features.7",
+    "normalized_depth": 0.375,
+    "layer_desc": "ReLU 3 (Textures)",
+    "overall_median_r": 0.40536463260650635,
+    "roi_medians": {
+      "hV4": 0.4667590856552124,
+      "V2": 0.5520392656326294,
+      "EBA": 0.4174885153770447,
+      "RSC": 0.48982107639312744,
+      "OFA": 0.42601191997528076,
+      "V3": 0.5226263999938965,
+      "V1": 0.5725727677345276,
+      "OPA": 0.40419554710388184,
+      "PPA": 0.4183533191680908,
+      "FFA": 0.41701415181159973
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_features.9": {
+    "model_key": "alexnet",
+    "layer_name": "features.9",
+    "normalized_depth": 0.5,
+    "layer_desc": "ReLU 4 (Complex textures)",
+    "overall_median_r": 0.4117593765258789,
+    "roi_medians": {
+      "hV4": 0.4606406092643738,
+      "V2": 0.5254234075546265,
+      "EBA": 0.43692445755004883,
+      "RSC": 0.5020256042480469,
+      "OFA": 0.41893288493156433,
+      "V3": 0.5032311677932739,
+      "V1": 0.5272551774978638,
+      "OPA": 0.41084861755371094,
+      "PPA": 0.42907291650772095,
+      "FFA": 0.44214484095573425
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_features.11": {
+    "model_key": "alexnet",
+    "layer_name": "features.11",
+    "normalized_depth": 0.625,
+    "layer_desc": "ReLU 5 (Part assemblies)",
+    "overall_median_r": 0.4115303158760071,
+    "roi_medians": {
+      "hV4": 0.44893306493759155,
+      "V2": 0.49414482712745667,
+      "EBA": 0.4486463665962219,
+      "RSC": 0.5112337470054626,
+      "OFA": 0.3987463414669037,
+      "V3": 0.4751872718334198,
+      "V1": 0.49306055903434753,
+      "OPA": 0.4164418876171112,
+      "PPA": 0.4386494755744934,
+      "FFA": 0.4489104747772217
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_classifier.1": {
+    "model_key": "alexnet",
+    "layer_name": "classifier.1",
+    "normalized_depth": 0.75,
+    "layer_desc": "FC 6 (Latent features)",
+    "overall_median_r": 0.4118720591068268,
+    "roi_medians": {
+      "hV4": 0.44725626707077026,
+      "V2": 0.4910408556461334,
+      "EBA": 0.45143333077430725,
+      "RSC": 0.510161280632019,
+      "OFA": 0.39609405398368835,
+      "V3": 0.46813878417015076,
+      "V1": 0.48836466670036316,
+      "OPA": 0.41650527715682983,
+      "PPA": 0.4397242069244385,
+      "FFA": 0.4554853141307831
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_classifier.4": {
+    "model_key": "alexnet",
+    "layer_name": "classifier.4",
+    "normalized_depth": 0.875,
+    "layer_desc": "FC 7 (High-level semantics)",
+    "overall_median_r": 0.40034064650535583,
+    "roi_medians": {
+      "hV4": 0.41590043902397156,
+      "V2": 0.4288315176963806,
+      "EBA": 0.46093788743019104,
+      "RSC": 0.5198968648910522,
+      "OFA": 0.36470726132392883,
+      "V3": 0.41929078102111816,
+      "V1": 0.4218592047691345,
+      "OPA": 0.4164421260356903,
+      "PPA": 0.4462135434150696,
+      "FFA": 0.4668459892272949
+    },
+    "null_sample_r": 0.0
+  },
+  "alexnet_classifier.6": {
+    "model_key": "alexnet",
+    "layer_name": "classifier.6",
+    "normalized_depth": 1.0,
+    "layer_desc": "FC 8 (ImageNet logits)",
+    "overall_median_r": 0.374204158782959,
+    "roi_medians": {
+      "hV4": 0.3663315176963806,
+      "V2": 0.3410552144050598,
+      "EBA": 0.4562813341617584,
+      "RSC": 0.5317546129226685,
+      "OFA": 0.30551061034202576,
+      "V3": 0.338886559009552,
+      "V1": 0.35453730821609497,
+      "OPA": 0.40952807664871216,
+      "PPA": 0.45983320474624634,
+      "FFA": 0.4620327651500702
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_relu": {
+    "model_key": "resnet50",
+    "layer_name": "relu",
+    "normalized_depth": 0.125,
+    "layer_desc": "Stem Conv1 + ReLU",
+    "overall_median_r": 0.24507752060890198,
+    "roi_medians": {
+      "hV4": 0.28200799226760864,
+      "V2": 0.3184114694595337,
+      "EBA": 0.2386443018913269,
+      "RSC": 0.37080782651901245,
+      "OFA": 0.1947646588087082,
+      "V3": 0.2844088077545166,
+      "V1": 0.4069325923919678,
+      "OPA": 0.26775503158569336,
+      "PPA": 0.3017181158065796,
+      "FFA": 0.24992462992668152
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer1.0": {
+    "model_key": "resnet50",
+    "layer_name": "layer1.0",
+    "normalized_depth": 0.25,
+    "layer_desc": "Stage 1 Sub-block 1",
+    "overall_median_r": 0.32542240619659424,
+    "roi_medians": {
+      "hV4": 0.36480212211608887,
+      "V2": 0.4257018268108368,
+      "EBA": 0.3285619020462036,
+      "RSC": 0.4502860903739929,
+      "OFA": 0.30002322793006897,
+      "V3": 0.3992140591144562,
+      "V1": 0.46826085448265076,
+      "OPA": 0.3286494314670563,
+      "PPA": 0.3699600100517273,
+      "FFA": 0.3389478921890259
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer1.2": {
+    "model_key": "resnet50",
+    "layer_name": "layer1.2",
+    "normalized_depth": 0.375,
+    "layer_desc": "Stage 1 End",
+    "overall_median_r": 0.34429502487182617,
+    "roi_medians": {
+      "hV4": 0.3703814148902893,
+      "V2": 0.43097734451293945,
+      "EBA": 0.3571569621562958,
+      "RSC": 0.470020592212677,
+      "OFA": 0.31827154755592346,
+      "V3": 0.4061183035373688,
+      "V1": 0.4616459310054779,
+      "OPA": 0.35086193680763245,
+      "PPA": 0.39082854986190796,
+      "FFA": 0.3631976246833801
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer2.1": {
+    "model_key": "resnet50",
+    "layer_name": "layer2.1",
+    "normalized_depth": 0.5,
+    "layer_desc": "Stage 2 Mid",
+    "overall_median_r": 0.3818979859352112,
+    "roi_medians": {
+      "hV4": 0.42000582814216614,
+      "V2": 0.4696219861507416,
+      "EBA": 0.4014943242073059,
+      "RSC": 0.5061893463134766,
+      "OFA": 0.3616648018360138,
+      "V3": 0.4452213943004608,
+      "V1": 0.479685515165329,
+      "OPA": 0.38848862051963806,
+      "PPA": 0.42399489879608154,
+      "FFA": 0.40549203753471375
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer2.3": {
+    "model_key": "resnet50",
+    "layer_name": "layer2.3",
+    "normalized_depth": 0.625,
+    "layer_desc": "Stage 2 End",
+    "overall_median_r": 0.3937770426273346,
+    "roi_medians": {
+      "hV4": 0.43332451581954956,
+      "V2": 0.47511187195777893,
+      "EBA": 0.4262290298938751,
+      "RSC": 0.5193668007850647,
+      "OFA": 0.3684195280075073,
+      "V3": 0.4498963952064514,
+      "V1": 0.4802132844924927,
+      "OPA": 0.4057018756866455,
+      "PPA": 0.43286293745040894,
+      "FFA": 0.4256260395050049
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer3.2": {
+    "model_key": "resnet50",
+    "layer_name": "layer3.2",
+    "normalized_depth": 0.75,
+    "layer_desc": "Stage 3 Mid",
+    "overall_median_r": 0.4283222556114197,
+    "roi_medians": {
+      "hV4": 0.47007569670677185,
+      "V2": 0.5015909671783447,
+      "EBA": 0.4694085121154785,
+      "RSC": 0.5389054417610168,
+      "OFA": 0.403079092502594,
+      "V3": 0.48485544323921204,
+      "V1": 0.4956756830215454,
+      "OPA": 0.44047775864601135,
+      "PPA": 0.4626580476760864,
+      "FFA": 0.46545663475990295
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer3.5": {
+    "model_key": "resnet50",
+    "layer_name": "layer3.5",
+    "normalized_depth": 0.875,
+    "layer_desc": "Stage 3 End",
+    "overall_median_r": 0.43883079290390015,
+    "roi_medians": {
+      "hV4": 0.46880683302879333,
+      "V2": 0.4826929271221161,
+      "EBA": 0.4968279004096985,
+      "RSC": 0.5593302845954895,
+      "OFA": 0.4063064754009247,
+      "V3": 0.4683409631252289,
+      "V1": 0.4741745591163635,
+      "OPA": 0.4618263244628906,
+      "PPA": 0.48443803191185,
+      "FFA": 0.4879413843154907
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_layer4.2": {
+    "model_key": "resnet50",
+    "layer_name": "layer4.2",
+    "normalized_depth": 1.0,
+    "layer_desc": "Stage 4 End (Penultimate)",
+    "overall_median_r": 0.37755388021469116,
+    "roi_medians": {
+      "hV4": 0.37178146839141846,
+      "V2": 0.3285974860191345,
+      "EBA": 0.484805703163147,
+      "RSC": 0.5436170697212219,
+      "OFA": 0.32250070571899414,
+      "V3": 0.3297540545463562,
+      "V1": 0.3294321894645691,
+      "OPA": 0.42533552646636963,
+      "PPA": 0.4791380763053894,
+      "FFA": 0.47825995087623596
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_patch_embed": {
+    "model_key": "deit_small",
+    "layer_name": "patch_embed",
+    "normalized_depth": 0.0,
+    "layer_desc": "Patch Projection (Stem)",
+    "overall_median_r": 0.1387830674648285,
+    "roi_medians": {
+      "hV4": 0.162539541721344,
+      "V2": 0.1845581829547882,
+      "EBA": 0.13126228749752045,
+      "RSC": 0.21472051739692688,
+      "OFA": 0.12282709032297134,
+      "V3": 0.16837440431118011,
+      "V1": 0.28549766540527344,
+      "OPA": 0.1497790515422821,
+      "PPA": 0.1613815724849701,
+      "FFA": 0.14593738317489624
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.1": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.1",
+    "normalized_depth": 0.167,
+    "layer_desc": "Transformer Block 2 (2/12)",
+    "overall_median_r": 0.36379700899124146,
+    "roi_medians": {
+      "hV4": 0.39949506521224976,
+      "V2": 0.48100659251213074,
+      "EBA": 0.3808358311653137,
+      "RSC": 0.49089157581329346,
+      "OFA": 0.3413779139518738,
+      "V3": 0.44162341952323914,
+      "V1": 0.5049711465835571,
+      "OPA": 0.37082603573799133,
+      "PPA": 0.4069881737232208,
+      "FFA": 0.38674721121788025
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.3": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.3",
+    "normalized_depth": 0.333,
+    "layer_desc": "Transformer Block 4 (4/12)",
+    "overall_median_r": 0.3892706036567688,
+    "roi_medians": {
+      "hV4": 0.4195125102996826,
+      "V2": 0.47092437744140625,
+      "EBA": 0.4338110089302063,
+      "RSC": 0.5214693546295166,
+      "OFA": 0.3505016565322876,
+      "V3": 0.43666350841522217,
+      "V1": 0.4718540906906128,
+      "OPA": 0.40408119559288025,
+      "PPA": 0.4385809004306793,
+      "FFA": 0.4373447000980377
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.5": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.5",
+    "normalized_depth": 0.5,
+    "layer_desc": "Transformer Block 6 (6/12)",
+    "overall_median_r": 0.41467875242233276,
+    "roi_medians": {
+      "hV4": 0.43531882762908936,
+      "V2": 0.46740251779556274,
+      "EBA": 0.47528141736984253,
+      "RSC": 0.5437753796577454,
+      "OFA": 0.34873494505882263,
+      "V3": 0.43369820713996887,
+      "V1": 0.46393635869026184,
+      "OPA": 0.44311684370040894,
+      "PPA": 0.4706191420555115,
+      "FFA": 0.47191092371940613
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.7": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.7",
+    "normalized_depth": 0.667,
+    "layer_desc": "Transformer Block 8 (8/12)",
+    "overall_median_r": 0.42382532358169556,
+    "roi_medians": {
+      "hV4": 0.4335351884365082,
+      "V2": 0.4456401467323303,
+      "EBA": 0.5000872015953064,
+      "RSC": 0.5604228377342224,
+      "OFA": 0.35781151056289673,
+      "V3": 0.41475504636764526,
+      "V1": 0.44082269072532654,
+      "OPA": 0.4573330581188202,
+      "PPA": 0.48964789509773254,
+      "FFA": 0.4924556612968445
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.9": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.9",
+    "normalized_depth": 0.833,
+    "layer_desc": "Transformer Block 10 (10/12)",
+    "overall_median_r": 0.4185604453086853,
+    "roi_medians": {
+      "hV4": 0.41493481397628784,
+      "V2": 0.42567962408065796,
+      "EBA": 0.5002020597457886,
+      "RSC": 0.5626039505004883,
+      "OFA": 0.33412545919418335,
+      "V3": 0.3940405249595642,
+      "V1": 0.4239789545536041,
+      "OPA": 0.4549674987792969,
+      "PPA": 0.4892714023590088,
+      "FFA": 0.4897083044052124
+    },
+    "null_sample_r": 0.0
+  },
+  "deit_small_blocks.11": {
+    "model_key": "deit_small",
+    "layer_name": "blocks.11",
+    "normalized_depth": 1.0,
+    "layer_desc": "Transformer Block 12 (12/12 Final)",
+    "overall_median_r": 0.4111369848251343,
+    "roi_medians": {
+      "hV4": 0.3985034227371216,
+      "V2": 0.4159572124481201,
+      "EBA": 0.4975462555885315,
+      "RSC": 0.5564261674880981,
+      "OFA": 0.3204197585582733,
+      "V3": 0.3785216510295868,
+      "V1": 0.41149261593818665,
+      "OPA": 0.44513943791389465,
+      "PPA": 0.48640114068984985,
+      "FFA": 0.48271068930625916
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_conv1": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "conv1",
+    "normalized_depth": 0.0,
+    "layer_desc": "Patch Conv Stem",
+    "overall_median_r": 0.13436150550842285,
+    "roi_medians": {
+      "hV4": 0.14313076436519623,
+      "V2": 0.16873839497566223,
+      "EBA": 0.13388468325138092,
+      "RSC": 0.20959997177124023,
+      "OFA": 0.1132107600569725,
+      "V3": 0.1486101895570755,
+      "V1": 0.2675331234931946,
+      "OPA": 0.14648018777370453,
+      "PPA": 0.16332708299160004,
+      "FFA": 0.14888662099838257
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.1": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.1",
+    "normalized_depth": 0.167,
+    "layer_desc": "ResBlock 2 (2/12)",
+    "overall_median_r": 0.3345942795276642,
+    "roi_medians": {
+      "hV4": 0.35969656705856323,
+      "V2": 0.40909355878829956,
+      "EBA": 0.34953346848487854,
+      "RSC": 0.4846246540546417,
+      "OFA": 0.28733018040657043,
+      "V3": 0.37670251727104187,
+      "V1": 0.4350830018520355,
+      "OPA": 0.35707327723503113,
+      "PPA": 0.39990225434303284,
+      "FFA": 0.3575060963630676
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.3": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.3",
+    "normalized_depth": 0.333,
+    "layer_desc": "ResBlock 4 (4/12)",
+    "overall_median_r": 0.3947376608848572,
+    "roi_medians": {
+      "hV4": 0.42350074648857117,
+      "V2": 0.4680165648460388,
+      "EBA": 0.4377489387989044,
+      "RSC": 0.5236627459526062,
+      "OFA": 0.35534244775772095,
+      "V3": 0.43920373916625977,
+      "V1": 0.46220093965530396,
+      "OPA": 0.4094626009464264,
+      "PPA": 0.44765329360961914,
+      "FFA": 0.4347136318683624
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.5": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.5",
+    "normalized_depth": 0.5,
+    "layer_desc": "ResBlock 6 (6/12)",
+    "overall_median_r": 0.41740211844444275,
+    "roi_medians": {
+      "hV4": 0.4378608465194702,
+      "V2": 0.46601003408432007,
+      "EBA": 0.47805655002593994,
+      "RSC": 0.5520875453948975,
+      "OFA": 0.3665676712989807,
+      "V3": 0.43929338455200195,
+      "V1": 0.45466870069503784,
+      "OPA": 0.4452970027923584,
+      "PPA": 0.4794437289237976,
+      "FFA": 0.4694407284259796
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.7": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.7",
+    "normalized_depth": 0.667,
+    "layer_desc": "ResBlock 8 (8/12)",
+    "overall_median_r": 0.42397063970565796,
+    "roi_medians": {
+      "hV4": 0.428666353225708,
+      "V2": 0.43688422441482544,
+      "EBA": 0.505407452583313,
+      "RSC": 0.572358250617981,
+      "OFA": 0.3529023826122284,
+      "V3": 0.4104011356830597,
+      "V1": 0.4276786148548126,
+      "OPA": 0.4610743224620819,
+      "PPA": 0.49567896127700806,
+      "FFA": 0.49247121810913086
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.9": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.9",
+    "normalized_depth": 0.833,
+    "layer_desc": "ResBlock 10 (10/12)",
+    "overall_median_r": 0.4206627607345581,
+    "roi_medians": {
+      "hV4": 0.4087603986263275,
+      "V2": 0.396877259016037,
+      "EBA": 0.5264039039611816,
+      "RSC": 0.5831829905509949,
+      "OFA": 0.3344690501689911,
+      "V3": 0.37139561772346497,
+      "V1": 0.38303884863853455,
+      "OPA": 0.4651958644390106,
+      "PPA": 0.5068329572677612,
+      "FFA": 0.5008549094200134
+    },
+    "null_sample_r": 0.0
+  },
+  "clip_vit_b16_transformer.resblocks.11": {
+    "model_key": "clip_vit_b16",
+    "layer_name": "transformer.resblocks.11",
+    "normalized_depth": 1.0,
+    "layer_desc": "ResBlock 12 (12/12 Final)",
+    "overall_median_r": 0.4152565002441406,
+    "roi_medians": {
+      "hV4": 0.39165031909942627,
+      "V2": 0.38080349564552307,
+      "EBA": 0.5240355730056763,
+      "RSC": 0.575215220451355,
+      "OFA": 0.3133542239665985,
+      "V3": 0.3453180491924286,
+      "V1": 0.3718661367893219,
+      "OPA": 0.460042804479599,
+      "PPA": 0.4985029697418213,
+      "FFA": 0.5006607174873352
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_relu": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "relu",
+    "normalized_depth": 0.125,
+    "layer_desc": "Stem Conv1 + ReLU",
+    "overall_median_r": 0.2304299771785736,
+    "roi_medians": {
+      "hV4": 0.2670794725418091,
+      "V2": 0.3146388530731201,
+      "EBA": 0.21960081160068512,
+      "RSC": 0.34748390316963196,
+      "OFA": 0.19216538965702057,
+      "V3": 0.28098389506340027,
+      "V1": 0.40309327840805054,
+      "OPA": 0.248572438955307,
+      "PPA": 0.27792006731033325,
+      "FFA": 0.22894906997680664
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer1.0": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer1.0",
+    "normalized_depth": 0.25,
+    "layer_desc": "Stage 1 Sub-block 1",
+    "overall_median_r": 0.24947458505630493,
+    "roi_medians": {
+      "hV4": 0.2887842655181885,
+      "V2": 0.3394516706466675,
+      "EBA": 0.2537849545478821,
+      "RSC": 0.36905497312545776,
+      "OFA": 0.221255362033844,
+      "V3": 0.30727291107177734,
+      "V1": 0.4152223467826843,
+      "OPA": 0.25549712777137756,
+      "PPA": 0.2871156930923462,
+      "FFA": 0.25665661692619324
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer1.2": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer1.2",
+    "normalized_depth": 0.375,
+    "layer_desc": "Stage 1 End",
+    "overall_median_r": 0.24958506226539612,
+    "roi_medians": {
+      "hV4": 0.29697370529174805,
+      "V2": 0.35875403881073,
+      "EBA": 0.24840253591537476,
+      "RSC": 0.3600248396396637,
+      "OFA": 0.23522455990314484,
+      "V3": 0.3243548274040222,
+      "V1": 0.42640870809555054,
+      "OPA": 0.2487500011920929,
+      "PPA": 0.2749404013156891,
+      "FFA": 0.2510201632976532
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer2.1": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer2.1",
+    "normalized_depth": 0.5,
+    "layer_desc": "Stage 2 Mid",
+    "overall_median_r": 0.2369959056377411,
+    "roi_medians": {
+      "hV4": 0.29759421944618225,
+      "V2": 0.36847561597824097,
+      "EBA": 0.2295551598072052,
+      "RSC": 0.34365102648735046,
+      "OFA": 0.2248024046421051,
+      "V3": 0.3223024606704712,
+      "V1": 0.4439644515514374,
+      "OPA": 0.23962698876857758,
+      "PPA": 0.2594892978668213,
+      "FFA": 0.24033918976783752
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer2.3": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer2.3",
+    "normalized_depth": 0.625,
+    "layer_desc": "Stage 2 End",
+    "overall_median_r": 0.09466627240180969,
+    "roi_medians": {
+      "hV4": 0.16508427262306213,
+      "V2": 0.19589996337890625,
+      "EBA": 0.07667368650436401,
+      "RSC": 0.1597447395324707,
+      "OFA": 0.11026394367218018,
+      "V3": 0.19379904866218567,
+      "V1": 0.2986597418785095,
+      "OPA": 0.05572250112891197,
+      "PPA": 0.10600230097770691,
+      "FFA": 0.12002695351839066
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer3.2": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer3.2",
+    "normalized_depth": 0.75,
+    "layer_desc": "Stage 3 Mid",
+    "overall_median_r": 0.20093031227588654,
+    "roi_medians": {
+      "hV4": 0.2841891646385193,
+      "V2": 0.3709147870540619,
+      "EBA": 0.19586162269115448,
+      "RSC": 0.2760809659957886,
+      "OFA": 0.22690722346305847,
+      "V3": 0.3218688368797302,
+      "V1": 0.4541872441768646,
+      "OPA": 0.19339632987976074,
+      "PPA": 0.20255833864212036,
+      "FFA": 0.19929158687591553
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer3.5": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer3.5",
+    "normalized_depth": 0.875,
+    "layer_desc": "Stage 3 End",
+    "overall_median_r": 0.1176312267780304,
+    "roi_medians": {
+      "hV4": 0.1599794626235962,
+      "V2": 0.18549984693527222,
+      "EBA": 0.11351683735847473,
+      "RSC": 0.18975672125816345,
+      "OFA": 0.1094345822930336,
+      "V3": 0.18663159012794495,
+      "V1": 0.29729047417640686,
+      "OPA": 0.12136600911617279,
+      "PPA": 0.12358612567186356,
+      "FFA": 0.1318434476852417
+    },
+    "null_sample_r": 0.0
+  },
+  "resnet50_untrained_layer4.2": {
+    "model_key": "resnet50_untrained",
+    "layer_name": "layer4.2",
+    "normalized_depth": 1.0,
+    "layer_desc": "Stage 4 End (Penultimate)",
+    "overall_median_r": 0.18786364793777466,
+    "roi_medians": {
+      "hV4": 0.2718832492828369,
+      "V2": 0.3530672788619995,
+      "EBA": 0.1758417785167694,
+      "RSC": 0.2506159842014313,
+      "OFA": 0.21755586564540863,
+      "V3": 0.31318730115890503,
+      "V1": 0.44512635469436646,
+      "OPA": 0.18698662519454956,
+      "PPA": 0.17491212487220764,
+      "FFA": 0.18147166073322296
+    },
+    "null_sample_r": 0.0
+  }
+}
